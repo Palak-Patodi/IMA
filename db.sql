@@ -174,3 +174,21 @@ SELECT CONCAT('[', user_id, ']') AS uid,
        LENGTH(password) AS pwd_len
 FROM user;
 
+ALTER TABLE user
+ADD COLUMN secret_question VARCHAR(255),
+ADD COLUMN secret_answer VARCHAR(255);
+
+UPDATE user
+SET secret_question = 'What is your senior secondary school name?',
+    secret_answer = 'xyz'
+WHERE user_id = 'M01';
+
+UPDATE user
+SET secret_question = 'What is your senior secondary school name?',
+    secret_answer = 'abc'
+WHERE user_id = 'D01';
+
+UPDATE user
+SET secret_question = 'What is your senior secondary school name?',
+    secret_answer = 'def'
+WHERE user_id = 'H01';
