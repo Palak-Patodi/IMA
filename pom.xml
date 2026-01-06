@@ -10,18 +10,34 @@
         <maven.compiler.release>24</maven.compiler.release>
         <exec.mainClass>com.mycompany.inventory.Inventory</exec.mainClass>
     </properties>
+    
     <dependencies>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-controls</artifactId>
-            <version>23.0.1</version>
-        </dependency>
-         <dependency>
-    <groupId>mysql</groupId>
-    <artifactId>mysql-connector-java</artifactId>
-    <version>8.0.33</version>
-</dependency>
 
+    <!-- JavaFX -->
+    <dependency>
+        <groupId>org.openjfx</groupId>
+        <artifactId>javafx-controls</artifactId>
+        <version>23.0.1</version>
+    </dependency>
+
+    <dependency>
+        <groupId>org.openjfx</groupId>
+        <artifactId>javafx-graphics</artifactId>
+        <version>23.0.1</version>
+    </dependency>
+
+    <dependency>
+        <groupId>org.openjfx</groupId>
+        <artifactId>javafx-fxml</artifactId>
+        <version>23.0.1</version>
+    </dependency>
+
+    <!-- MySQL -->
+    <dependency>
+        <groupId>mysql</groupId>
+        <artifactId>mysql-connector-java</artifactId>
+        <version>8.0.33</version>
+    </dependency>
 
     </dependencies>
 
