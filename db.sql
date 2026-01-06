@@ -192,3 +192,28 @@ UPDATE user
 SET secret_question = 'What is your senior secondary school name?',
     secret_answer = 'def'
 WHERE user_id = 'H01';
+
+
+
+ALTER TABLE product
+ADD COLUMN initial_qty INT NOT NULL AFTER qty_in_stock;
+SET SQL_SAFE_UPDATES = 0;
+
+UPDATE product
+SET initial_qty = qty_in_stock;
+
+SET SQL_SAFE_UPDATES = 1;
+
+
+DELIMITER $$
+
+CREATE TRIGGER set_initial_qty
+BEFORE INSERT ON product
+FOR EACH ROW
+BEGIN
+    IF NEW.initial_qty IS NULL THEN
+        SET NEW.initial_qty = NEW.qty_in_stock;
+    END IF;
+END$$
+
+DELIMITER ;
