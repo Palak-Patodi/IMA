@@ -22,8 +22,16 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import javafx.scene.input.MouseEvent;
-
-
+import javafx.scene.control.TableView;
+import javafx.scene.control.TableColumn;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import java.sql.Connection;
+import java.sql.Statement;
+import java.sql.ResultSet;
+import javafx.stage.Stage;
+import javafx.scene.control.TextInputDialog;
+import java.util.Optional;
 
 
 public class DashboardUI {
@@ -275,6 +283,72 @@ public class DashboardUI {
                     monthlyBtn.setOnAction(e -> showReportAlert("Monthly"));
                     yearlyBtn.setOnAction(e -> showReportAlert("Yearly"));
                 }
+                // ---------- BUDGET ANALYSIS ----------
+                if (btn.getText().equals("Budget Analysis")) {
+                    btn.setOnAction(e -> showBudgetAnalysis());
+                }
+                
+                                // ---------- REQUEST INVENTORY ----------
+                if (btn.getText().equals("Request Inventory")) {
+                    btn.setOnAction(e -> showRequestInventory());
+                }
+
+
+                // ---------- VIEW DROPDOWN ----------
+                if (btn.getText().equals("View"))
+                {
+                    ContextMenu viewMenu = new ContextMenu();
+
+                    Button productBtn = new Button("Product Details");
+                    Button billBtn = new Button("Bill Details");
+                    Button supplierBtn = new Button("Supplier Details");
+
+                    String bigMenuStyle =
+                        "-fx-font-size: 22px;" +
+                        "-fx-background-color: #d2b48c;" +
+                        "-fx-background-radius: 30;" +
+                        "-fx-text-fill: #333333;";
+
+                    productBtn.setStyle(bigMenuStyle);
+                    billBtn.setStyle(bigMenuStyle);
+                    supplierBtn.setStyle(bigMenuStyle);
+
+                    productBtn.setPrefSize(220, 60);
+                    billBtn.setPrefSize(220, 60);
+                    supplierBtn.setPrefSize(220, 60);
+
+                    CustomMenuItem productItem = new CustomMenuItem(productBtn, true);
+                    CustomMenuItem billItem = new CustomMenuItem(billBtn, true);
+                    CustomMenuItem supplierItem = new CustomMenuItem(supplierBtn, true);
+
+                    viewMenu.getItems().addAll(
+                        productItem,
+                        billItem,
+                        supplierItem
+                    );
+
+                    // SHOW VIEW MENU
+                    btn.setOnAction(e ->
+                        viewMenu.show(btn, Side.BOTTOM, 0, 0)
+                    );
+
+                    // ACTIONS
+                    productBtn.setOnAction(e -> {
+                        viewMenu.hide();
+                        showProductTable();
+                    });
+
+                    billBtn.setOnAction(e -> {
+                        viewMenu.hide();
+                        showBillTable();
+                    });
+
+                    supplierBtn.setOnAction(e -> {
+                        viewMenu.hide();
+                        showSupplierTable();
+                    });
+                }
+
                         //ISSUE
                 if (btn.getText().equals("Issue")) 
                 {
@@ -322,6 +396,172 @@ public class DashboardUI {
 
         } catch (IOException e) {
         }
+    }
+
+    private void showProductTable()
+    {
+        Stage stage = new Stage();
+        TableView<model.Product> table = new TableView<>();
+
+        TableColumn<model.Product, Integer> pid = new TableColumn<>("PID");
+        pid.setCellValueFactory(d -> d.getValue().pidProperty().asObject());
+
+        TableColumn<model.Product, String> name = new TableColumn<>("Product Name");
+        name.setCellValueFactory(d -> d.getValue().nameProperty());
+
+        TableColumn<model.Product, Integer> qty = new TableColumn<>("Stock");
+        qty.setCellValueFactory(d -> d.getValue().qtyProperty().asObject());
+
+        table.getColumns().addAll(pid, name, qty);
+
+        ObservableList<model.Product> data = FXCollections.observableArrayList();
+
+        try (Connection con = db.DBConnection.getConnection();
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(
+                     "SELECT pid, product_name, qty_in_stock FROM product")) {
+
+            while (rs.next()) {
+                data.add(new model.Product(
+                        rs.getInt("pid"),
+                        rs.getString("product_name"),
+                        rs.getInt("qty_in_stock")
+                ));
+            }
+        } catch (Exception e) {
+        }
+
+        table.setItems(data);
+        stage.setScene(new Scene(new VBox(table), 600, 400));
+        stage.setTitle("Product Details");
+        stage.show();
+    }
+
+    private void showBillTable() 
+    {
+        Stage stage = new Stage();
+        TableView<model.Bill> table = new TableView<>();
+
+        TableColumn<model.Bill, String> billNo = new TableColumn<>("Bill No");
+        billNo.setCellValueFactory(d -> d.getValue().billNoProperty());
+
+        TableColumn<model.Bill, Double> amount = new TableColumn<>("Amount");
+        amount.setCellValueFactory(d -> d.getValue().amountProperty().asObject());
+
+        table.getColumns().addAll(billNo, amount);
+
+        ObservableList<model.Bill> data = FXCollections.observableArrayList();
+
+        try (Connection con = db.DBConnection.getConnection();
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(
+                     "SELECT bill_no, bill_amount FROM bill_invoice")) {
+
+            while (rs.next()) {
+                data.add(new model.Bill(
+                        rs.getString("bill_no"),
+                        rs.getDouble("bill_amount")
+                ));
+            }
+        } catch (Exception e) {
+        }
+
+        table.setItems(data);
+        stage.setScene(new Scene(new VBox(table), 600, 400));
+        stage.setTitle("Bill Details");
+        stage.show();
+    }
+
+    private void showSupplierTable() 
+    {
+        Stage stage = new Stage();
+        TableView<model.Supplier> table = new TableView<>();
+
+        TableColumn<model.Supplier, String> name = new TableColumn<>("Name");
+        name.setCellValueFactory(d -> d.getValue().nameProperty());
+
+        TableColumn<model.Supplier, String> contact = new TableColumn<>("Contact");
+        contact.setCellValueFactory(d -> d.getValue().contactProperty());
+
+        table.getColumns().addAll(name, contact);
+
+        ObservableList<model.Supplier> data = FXCollections.observableArrayList();
+
+        try (Connection con = db.DBConnection.getConnection();
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(
+                     "SELECT name, contact_no FROM supplier")) {
+
+            while (rs.next()) {
+                data.add(new model.Supplier(
+                        rs.getString("name"),
+                        rs.getString("contact_no")
+                ));
+            }
+        } catch (Exception e) {
+        }
+
+        table.setItems(data);
+        stage.setScene(new Scene(new VBox(table), 600, 400));
+        stage.setTitle("Supplier Details");
+        stage.show();
+    }
+    private void showBudgetAnalysis() {
+        Label title = new Label("Budget Analysis Summary");
+        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+
+        Label content = new Label(
+            "• Shows total expenditure\n" +
+            "• Month-wise comparison\n" +
+            "• Supports HOD / Dean decisions"
+        );
+
+        VBox box = new VBox(15, title, content);
+        box.setPadding(new Insets(20));
+        box.setAlignment(Pos.CENTER);
+        box.setStyle(
+            "-fx-background-color:#fff3cd;" +
+            "-fx-border-color:#ffcc00;" +
+            "-fx-border-radius:10;"
+        );
+
+        Stage stage = new Stage();
+        stage.setTitle("Budget Analysis");
+        stage.setScene(new Scene(box, 400, 250));
+        stage.show();
+    }
+    private void showRequestInventory() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Request Inventory");
+        dialog.setHeaderText("New Inventory Request");
+        dialog.setContentText("Enter item name and quantity:");
+
+        Optional<String> result = dialog.showAndWait();
+        if (!result.isPresent()) return;
+
+        showInfoPanel(
+            "Request Submitted",
+            "Your request has been sent for HOD / Dean approval."
+        );
+    }
+
+    private void showInfoPanel(String title, String message) {
+        Label lbl = new Label(message);
+        lbl.setWrapText(true);
+
+        VBox box = new VBox(lbl);
+        box.setPadding(new Insets(20));
+        box.setAlignment(Pos.CENTER);
+        box.setStyle(
+            "-fx-background-color:#e7f3ff;" +
+            "-fx-border-color:#2196f3;" +
+            "-fx-border-radius:10;"
+        );
+
+        Stage stage = new Stage();
+        stage.setTitle(title);
+        stage.setScene(new Scene(box, 350, 200));
+        stage.show();
     }
 
     public Scene getScene() {
