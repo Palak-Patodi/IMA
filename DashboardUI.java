@@ -9,10 +9,21 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.TextInputDialog;
 import java.util.Optional;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Alert;
+import javafx.geometry.Side;
+import javafx.scene.control.CustomMenuItem;
+import java.awt.Desktop;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import javafx.scene.input.MouseEvent;
+
+
 
 
 public class DashboardUI {
@@ -62,17 +73,28 @@ public class DashboardUI {
             showLowInventoryAlert(itemName, quantity);
         }
     }
+    
+    private void showReportAlert(String type) 
+    {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Report");
+        alert.setHeaderText(type + " Report");
+        alert.setContentText(type + " report selected.");
+        alert.showAndWait();
+    }
+
 
     public DashboardUI(Inventory app) {
-        
-
+       
         // ===== TOP BROWN BAR =====
         Label userManual = new Label("User Manual");
+        userManual.setOnMouseClicked(e -> openUserManual());
         userManual.setFont(Font.font("Arial", FontWeight.BOLD, 20));
 
         Label logout = new Label("Logout");
         logout.setFont(Font.font("Arial", FontWeight.BOLD, 20));
-        logout.setOnMouseClicked(e -> app.showLogin());
+        logout.setOnMouseClicked((MouseEvent e) -> {app.showLogin();});
+
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -101,6 +123,7 @@ public class DashboardUI {
                 if (index >= names.length) break;
 
                 Button btn = new Button(names[index++]);
+                
                 btn.setOnAction(e -> checkLowInventoryFromUser());
                 btn.setFont(Font.font("Arial", FontWeight.NORMAL, 30)); // NOT bold
                 btn.setPrefSize(320, 120);
@@ -108,6 +131,161 @@ public class DashboardUI {
                     "-fx-background-color:#d2b48c;" +
                     "-fx-background-radius:45;"
                 );
+                
+                // ---------- UPDATE DROPDOWN ----------
+                if (btn.getText().equals("Update")) {
+
+                    ContextMenu updateMenu = new ContextMenu();
+
+                    // ===== ADD BUTTON =====
+                    Button addBtn = new Button("Add");
+                    addBtn.setPrefSize(200, 60);
+
+                    // ===== DELETE BUTTON =====
+                    Button deleteBtn = new Button("Delete");
+                    deleteBtn.setPrefSize(200, 60);
+
+                    // ===== MODIFY BUTTON =====
+                    Button modifyBtn = new Button("Modify");
+                    modifyBtn.setPrefSize(200, 60);
+
+                    String bigMenuStyle =
+                        "-fx-font-size: 22px;" +
+                        "-fx-background-color: #d2b48c;" +
+                        "-fx-background-radius: 30;" +
+                        "-fx-text-fill: #333333;";
+
+                    addBtn.setStyle(bigMenuStyle);
+                    deleteBtn.setStyle(bigMenuStyle);
+                    modifyBtn.setStyle(bigMenuStyle);
+
+                    CustomMenuItem addItem = new CustomMenuItem(addBtn, true);
+                    CustomMenuItem deleteItem = new CustomMenuItem(deleteBtn, true);
+                    CustomMenuItem modifyItem = new CustomMenuItem(modifyBtn, false); // IMPORTANT
+
+                    updateMenu.getItems().addAll(addItem, deleteItem, modifyItem);
+
+                    // SHOW FIRST DROPDOWN
+                    btn.setOnAction(e ->
+                        updateMenu.show(btn, Side.BOTTOM, 0, 0)
+                    );
+
+                    // ===== EXISTING ACTIONS (UNCHANGED) =====
+                    addBtn.setOnAction(e -> {
+                        updateMenu.hide();
+                        app.showAddInventory();
+                    });
+
+                    deleteBtn.setOnAction(e -> {
+                        updateMenu.hide();
+                        app.showDeleteInventory();
+                    });
+
+                    // ==============================
+                    // MODIFY → SECOND DROPDOWN
+                    // ==============================
+                    ContextMenu modifyMenu = new ContextMenu();
+
+                    Button productBtn = new Button("Product");
+                    Button supplierBtn = new Button("Supplier");
+                    Button billBtn = new Button("Bill");
+
+                    productBtn.setPrefSize(200, 60);
+                    supplierBtn.setPrefSize(200, 60);
+                    billBtn.setPrefSize(200, 60);
+
+                    productBtn.setStyle(bigMenuStyle);
+                    supplierBtn.setStyle(bigMenuStyle);
+                    billBtn.setStyle(bigMenuStyle);
+
+                    CustomMenuItem productItem = new CustomMenuItem(productBtn, true);
+                    CustomMenuItem supplierItem = new CustomMenuItem(supplierBtn, true);
+                    CustomMenuItem billItem = new CustomMenuItem(billBtn, true);
+
+                    modifyMenu.getItems().addAll(
+                        productItem,
+                        supplierItem,
+                        billItem
+                    );
+
+                    // SHOW MODIFY DROPDOWN
+                    modifyBtn.setOnAction(e -> {
+                        modifyMenu.show(modifyBtn, Side.RIGHT, 0, 0);
+                    });
+
+                    // ===== MODIFY ACTIONS (PLACEHOLDERS) =====
+                    productBtn.setOnAction(e -> {
+                        modifyMenu.hide();
+                        System.out.println("Modify Product clicked");
+                        // app.showModifyProduct();
+                    });
+
+                    supplierBtn.setOnAction(e -> {
+                        modifyMenu.hide();
+                        System.out.println("Modify Supplier clicked");
+                        // app.showModifySupplier();
+                    });
+
+                    billBtn.setOnAction(e -> {
+                        modifyMenu.hide();
+                        System.out.println("Modify Bill clicked");
+                        // app.showModifyBill();
+                    });
+                }
+
+                // ---------- REPORT DROPDOWN ----------
+                if (btn.getText().equals("Report"))
+                {
+                    ContextMenu reportMenu = new ContextMenu();
+
+                    Button weeklyBtn = new Button("Weekly");
+                    Button monthlyBtn = new Button("Monthly");
+                    Button yearlyBtn = new Button("Yearly");
+
+                    String bigMenuStyle =
+                        "-fx-font-size: 22px;" +
+                        "-fx-background-color: #d2b48c;" +
+                        "-fx-background-radius: 30;" +
+                        "-fx-text-fill: #333333;";
+
+                    weeklyBtn.setStyle(bigMenuStyle);
+                    monthlyBtn.setStyle(bigMenuStyle);
+                    yearlyBtn.setStyle(bigMenuStyle);
+
+                    // SAME SIZE AS UPDATE DROPDOWN
+                    weeklyBtn.setPrefSize(200, 60);
+                    monthlyBtn.setPrefSize(200, 60);
+                    yearlyBtn.setPrefSize(200, 60);
+
+                    CustomMenuItem weeklyItem = new CustomMenuItem(weeklyBtn);
+                    CustomMenuItem monthlyItem = new CustomMenuItem(monthlyBtn);
+                    CustomMenuItem yearlyItem = new CustomMenuItem(yearlyBtn);
+
+                    weeklyItem.setHideOnClick(true);
+                    monthlyItem.setHideOnClick(true);
+                    yearlyItem.setHideOnClick(true);
+
+                    reportMenu.getItems().addAll(weeklyItem, monthlyItem, yearlyItem);
+
+                    btn.setOnAction(e ->
+                        reportMenu.show(btn, Side.BOTTOM, 0, 0)
+                    );
+
+                    weeklyBtn.setOnAction(e -> showReportAlert("Weekly"));
+                    monthlyBtn.setOnAction(e -> showReportAlert("Monthly"));
+                    yearlyBtn.setOnAction(e -> showReportAlert("Yearly"));
+                }
+                        //ISSUE
+                if (btn.getText().equals("Issue")) 
+                {
+                    btn.setOnAction(e -> app.showIssue());
+                }
+                        //RETURN
+                if (btn.getText().equals("Return")) 
+                {
+                    btn.setOnAction(e -> app.showReturn());
+                }
+                 
 
                 grid.add(btn, c, r);
             }
@@ -119,6 +297,31 @@ public class DashboardUI {
         root.setCenter(grid);
 
         scene = new Scene(root, 1024, 768);
+    }
+
+    private void openUserManual() 
+    {
+        try {
+            InputStream  is = getClass().getResourceAsStream(
+                "/USER MANUAL.pdf"
+            );
+
+            if (is == null) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Error");
+                alert.setHeaderText("User Manual Not Found");
+                alert.setContentText("USER_MANUAL.pdf not found in resources folder.");
+                alert.showAndWait();
+                return;
+            }
+
+            Path tempFile = Files.createTempFile("UserManual", ".pdf");
+            Files.copy(is, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            Desktop.getDesktop().open(tempFile.toFile());
+
+        } catch (IOException e) {
+        }
     }
 
     public Scene getScene() {
