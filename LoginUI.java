@@ -1,3 +1,4 @@
+
 package ui;
 
 import com.mycompany.inventory.Inventory;
@@ -218,23 +219,22 @@ public class LoginUI {
                 return;
             }
 
-            String sql = "UPDATE user SET password = TRIM(?) WHERE TRIM(user_id) = TRIM(?)";
+            String sql = "UPDATE user SET password = TRIM(?)";
 
-            try (Connection con = DBConnection.getConnection();
-                 PreparedStatement ps = con.prepareStatement(sql)) {
+try (Connection con = DBConnection.getConnection();
+     PreparedStatement ps = con.prepareStatement(sql)) {
 
-                System.out.println("UPDATE DB: " + con.getCatalog());
+    ps.setString(1, newPass.getText().trim()); // only this one
 
-                ps.setString(1, newPass.getText().trim());
-                ps.setString(2, users.getValue());
+    int rows = ps.executeUpdate();
+    status.setText(rows > 0
+            ? "Password updated for ALL users!"
+            : "Update failed");
 
-                int rows = ps.executeUpdate();
-                status.setText(rows > 0 ? "Password updated!" : "Update failed");
+} catch (Exception ex) {
+    status.setText("Error occurred");
+}
 
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                status.setText("Error occurred");
-            }
         });
 
         VBox layout = new VBox(12,
