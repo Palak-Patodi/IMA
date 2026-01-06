@@ -3,70 +3,61 @@ package ui;
 import com.mycompany.inventory.Inventory;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.geometry.Side;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
+import javafx.scene.control.*;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.CustomMenuItem;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.TextInputDialog;
-import java.util.Optional;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Alert;
-import javafx.geometry.Side;
-import javafx.scene.control.CustomMenuItem;
+import javafx.stage.Stage;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+
 import java.awt.Desktop;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TableColumn;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import java.sql.Connection;
-import java.sql.Statement;
 import java.sql.ResultSet;
-import javafx.stage.Stage;
-import javafx.scene.control.TextInputDialog;
+import java.sql.Statement;
 import java.util.Optional;
-
 
 public class DashboardUI {
 
     private final Scene scene;
-    private void showLowInventoryAlert(String itemName, int quantity) 
-    {
+    private Object model;
+
+    // ---------------------- LOW INVENTORY ALERT ----------------------
+    private void showLowInventoryAlert(String itemName, int quantity) {
         Alert alert = new Alert(AlertType.WARNING);
         alert.setTitle("Low Inventory Alert");
         alert.setHeaderText("Low Stock Detected");
         alert.setContentText(
-            "Item: " + itemName + "\n" +
-            "Available Quantity: " + quantity + "\n\n" +
-            "Please restock this item."
+                "Item: " + itemName + "\n" +
+                "Available Quantity: " + quantity + "\n\n" +
+                "Please restock this item."
         );
         alert.showAndWait();
     }
-    
-    private void checkLowInventoryFromUser() 
-    {
+
+    private void checkLowInventoryFromUser() {
         TextInputDialog itemDialog = new TextInputDialog();
         itemDialog.setTitle("Inventory Input");
         itemDialog.setHeaderText("Enter Item Name");
         itemDialog.setContentText("Item:");
-
         Optional<String> itemResult = itemDialog.showAndWait();
         if (!itemResult.isPresent()) return;
-
         String itemName = itemResult.get();
 
         TextInputDialog qtyDialog = new TextInputDialog();
         qtyDialog.setTitle("Inventory Input");
         qtyDialog.setHeaderText("Enter Available Quantity");
         qtyDialog.setContentText("Quantity:");
-
         Optional<String> qtyResult = qtyDialog.showAndWait();
         if (!qtyResult.isPresent()) return;
 
@@ -81,19 +72,19 @@ public class DashboardUI {
             showLowInventoryAlert(itemName, quantity);
         }
     }
-    
-    private void showReportAlert(String type) 
-    {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+
+    // ---------------------- REPORT ALERT ----------------------
+    private void showReportAlert(String type) {
+        Alert alert = new Alert(AlertType.INFORMATION);
         alert.setTitle("Report");
         alert.setHeaderText(type + " Report");
         alert.setContentText(type + " report selected.");
         alert.showAndWait();
     }
 
-
+    // ---------------------- CONSTRUCTOR ----------------------
     public DashboardUI(Inventory app) {
-       
+
         // ===== TOP BROWN BAR =====
         Label userManual = new Label("User Manual");
         userManual.setOnMouseClicked(e -> openUserManual());
@@ -101,8 +92,7 @@ public class DashboardUI {
 
         Label logout = new Label("Logout");
         logout.setFont(Font.font("Arial", FontWeight.BOLD, 20));
-        logout.setOnMouseClicked((MouseEvent e) -> {app.showLogin();});
-
+        logout.setOnMouseClicked((MouseEvent e) -> app.showLogin());
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -117,13 +107,10 @@ public class DashboardUI {
         grid.setAlignment(Pos.CENTER);
         grid.setHgap(35);
         grid.setVgap(35);
-        grid.setPadding(new Insets(20, 0, 0, 0)); // VERY LESS GAP from bar
+        grid.setPadding(new Insets(20, 0, 0, 0));
 
-        String[] names = {
-            "Update", "Issue", "Return",
-            "View", "Report", "Budget Analysis",
-            "Track Usage", "Request Inventory"
-        };
+        String[] names = { "Update", "Issue", "Return", "View", "Report",
+                "Budget Analysis", "Track Usage", "Request Inventory" };
 
         int index = 0;
         for (int r = 0; r < 3; r++) {
@@ -131,109 +118,77 @@ public class DashboardUI {
                 if (index >= names.length) break;
 
                 Button btn = new Button(names[index++]);
-                
-                btn.setOnAction(e -> checkLowInventoryFromUser());
-                btn.setFont(Font.font("Arial", FontWeight.NORMAL, 30)); // NOT bold
+                btn.setFont(Font.font("Arial", FontWeight.NORMAL, 30));
                 btn.setPrefSize(320, 120);
-                btn.setStyle(
-                    "-fx-background-color:#d2b48c;" +
-                    "-fx-background-radius:45;"
-                );
-                
-                // ---------- UPDATE DROPDOWN ----------
+                btn.setStyle("-fx-background-color:#d2b48c;-fx-background-radius:45;");
+
+                // ---------------- UPDATE DROPDOWN ----------------
                 if (btn.getText().equals("Update")) {
-
                     ContextMenu updateMenu = new ContextMenu();
-
-                    // ===== ADD BUTTON =====
                     Button addBtn = new Button("Add");
-                    addBtn.setPrefSize(200, 60);
-
-                    // ===== DELETE BUTTON =====
                     Button deleteBtn = new Button("Delete");
-                    deleteBtn.setPrefSize(200, 60);
-
-                    // ===== MODIFY BUTTON =====
                     Button modifyBtn = new Button("Modify");
-                    modifyBtn.setPrefSize(200, 60);
 
-                    String bigMenuStyle =
-                        "-fx-font-size: 22px;" +
-                        "-fx-background-color: #d2b48c;" +
-                        "-fx-background-radius: 30;" +
-                        "-fx-text-fill: #333333;";
-
+                    String bigMenuStyle = "-fx-font-size: 22px;" +
+                            "-fx-background-color: #d2b48c;" +
+                            "-fx-background-radius: 30;" +
+                            "-fx-text-fill: #333333;";
                     addBtn.setStyle(bigMenuStyle);
                     deleteBtn.setStyle(bigMenuStyle);
                     modifyBtn.setStyle(bigMenuStyle);
 
+                    addBtn.setPrefSize(200, 60);
+                    deleteBtn.setPrefSize(200, 60);
+                    modifyBtn.setPrefSize(200, 60);
+
                     CustomMenuItem addItem = new CustomMenuItem(addBtn, true);
                     CustomMenuItem deleteItem = new CustomMenuItem(deleteBtn, true);
-                    CustomMenuItem modifyItem = new CustomMenuItem(modifyBtn, false); // IMPORTANT
-
+                    CustomMenuItem modifyItem = new CustomMenuItem(modifyBtn, false);
                     updateMenu.getItems().addAll(addItem, deleteItem, modifyItem);
 
-                    // SHOW FIRST DROPDOWN
-                    btn.setOnAction(e ->
-                        updateMenu.show(btn, Side.BOTTOM, 0, 0)
-                    );
+                    btn.setOnAction(e -> updateMenu.show(btn, Side.BOTTOM, 0, 0));
 
-                    // ===== EXISTING ACTIONS (UNCHANGED) =====
                     addBtn.setOnAction(e -> {
                         updateMenu.hide();
                         app.showAddInventory();
                     });
-
                     deleteBtn.setOnAction(e -> {
                         updateMenu.hide();
                         app.showDeleteInventory();
                     });
 
-                    // ==============================
-                    // MODIFY → SECOND DROPDOWN
-                    // ==============================
+                    // --------- MODIFY DROPDOWN ----------
                     ContextMenu modifyMenu = new ContextMenu();
-
                     Button productBtn = new Button("Product");
                     Button supplierBtn = new Button("Supplier");
                     Button billBtn = new Button("Bill");
-
-                    productBtn.setPrefSize(200, 60);
-                    supplierBtn.setPrefSize(200, 60);
-                    billBtn.setPrefSize(200, 60);
 
                     productBtn.setStyle(bigMenuStyle);
                     supplierBtn.setStyle(bigMenuStyle);
                     billBtn.setStyle(bigMenuStyle);
 
-                    CustomMenuItem productItem = new CustomMenuItem(productBtn, true);
-                    CustomMenuItem supplierItem = new CustomMenuItem(supplierBtn, true);
-                    CustomMenuItem billItem = new CustomMenuItem(billBtn, true);
+                    productBtn.setPrefSize(200, 60);
+                    supplierBtn.setPrefSize(200, 60);
+                    billBtn.setPrefSize(200, 60);
 
                     modifyMenu.getItems().addAll(
-                        productItem,
-                        supplierItem,
-                        billItem
+                            new CustomMenuItem(productBtn, true),
+                            new CustomMenuItem(supplierBtn, true),
+                            new CustomMenuItem(billBtn, true)
                     );
 
-                    // SHOW MODIFY DROPDOWN
-                    modifyBtn.setOnAction(e -> {
-                        modifyMenu.show(modifyBtn, Side.RIGHT, 0, 0);
-                    });
+                    modifyBtn.setOnAction(e -> modifyMenu.show(modifyBtn, Side.RIGHT, 0, 0));
 
-                    // ===== MODIFY ACTIONS (PLACEHOLDERS) =====
                     productBtn.setOnAction(e -> {
                         modifyMenu.hide();
                         System.out.println("Modify Product clicked");
                         // app.showModifyProduct();
                     });
-
                     supplierBtn.setOnAction(e -> {
                         modifyMenu.hide();
                         System.out.println("Modify Supplier clicked");
                         // app.showModifySupplier();
                     });
-
                     billBtn.setOnAction(e -> {
                         modifyMenu.hide();
                         System.out.println("Modify Bill clicked");
@@ -241,73 +196,59 @@ public class DashboardUI {
                     });
                 }
 
-                // ---------- REPORT DROPDOWN ----------
-                if (btn.getText().equals("Report"))
-                {
+                // ---------------- REPORT DROPDOWN ----------------
+                if (btn.getText().equals("Report")) {
                     ContextMenu reportMenu = new ContextMenu();
-
                     Button weeklyBtn = new Button("Weekly");
                     Button monthlyBtn = new Button("Monthly");
                     Button yearlyBtn = new Button("Yearly");
 
-                    String bigMenuStyle =
-                        "-fx-font-size: 22px;" +
-                        "-fx-background-color: #d2b48c;" +
-                        "-fx-background-radius: 30;" +
-                        "-fx-text-fill: #333333;";
+                    String bigMenuStyle = "-fx-font-size: 22px;" +
+                            "-fx-background-color: #d2b48c;" +
+                            "-fx-background-radius: 30;" +
+                            "-fx-text-fill: #333333;";
 
                     weeklyBtn.setStyle(bigMenuStyle);
                     monthlyBtn.setStyle(bigMenuStyle);
                     yearlyBtn.setStyle(bigMenuStyle);
 
-                    // SAME SIZE AS UPDATE DROPDOWN
                     weeklyBtn.setPrefSize(200, 60);
                     monthlyBtn.setPrefSize(200, 60);
                     yearlyBtn.setPrefSize(200, 60);
 
-                    CustomMenuItem weeklyItem = new CustomMenuItem(weeklyBtn);
-                    CustomMenuItem monthlyItem = new CustomMenuItem(monthlyBtn);
-                    CustomMenuItem yearlyItem = new CustomMenuItem(yearlyBtn);
-
-                    weeklyItem.setHideOnClick(true);
-                    monthlyItem.setHideOnClick(true);
-                    yearlyItem.setHideOnClick(true);
-
-                    reportMenu.getItems().addAll(weeklyItem, monthlyItem, yearlyItem);
-
-                    btn.setOnAction(e ->
-                        reportMenu.show(btn, Side.BOTTOM, 0, 0)
+                    reportMenu.getItems().addAll(
+                            new CustomMenuItem(weeklyBtn),
+                            new CustomMenuItem(monthlyBtn),
+                            new CustomMenuItem(yearlyBtn)
                     );
 
+                    btn.setOnAction(e -> reportMenu.show(btn, Side.BOTTOM, 0, 0));
                     weeklyBtn.setOnAction(e -> showReportAlert("Weekly"));
                     monthlyBtn.setOnAction(e -> showReportAlert("Monthly"));
                     yearlyBtn.setOnAction(e -> showReportAlert("Yearly"));
                 }
-                // ---------- BUDGET ANALYSIS ----------
+
+                // ---------------- BUDGET ANALYSIS ----------------
                 if (btn.getText().equals("Budget Analysis")) {
                     btn.setOnAction(e -> showBudgetAnalysis());
                 }
-                
-                                // ---------- REQUEST INVENTORY ----------
+
+                // ---------------- REQUEST INVENTORY ----------------
                 if (btn.getText().equals("Request Inventory")) {
                     btn.setOnAction(e -> showRequestInventory());
                 }
 
-
-                // ---------- VIEW DROPDOWN ----------
-                if (btn.getText().equals("View"))
-                {
+                // ---------------- VIEW DROPDOWN ----------------
+                if (btn.getText().equals("View")) {
                     ContextMenu viewMenu = new ContextMenu();
-
                     Button productBtn = new Button("Product Details");
                     Button billBtn = new Button("Bill Details");
                     Button supplierBtn = new Button("Supplier Details");
 
-                    String bigMenuStyle =
-                        "-fx-font-size: 22px;" +
-                        "-fx-background-color: #d2b48c;" +
-                        "-fx-background-radius: 30;" +
-                        "-fx-text-fill: #333333;";
+                    String bigMenuStyle = "-fx-font-size: 22px;" +
+                            "-fx-background-color: #d2b48c;" +
+                            "-fx-background-radius: 30;" +
+                            "-fx-text-fill: #333333;";
 
                     productBtn.setStyle(bigMenuStyle);
                     billBtn.setStyle(bigMenuStyle);
@@ -317,49 +258,35 @@ public class DashboardUI {
                     billBtn.setPrefSize(220, 60);
                     supplierBtn.setPrefSize(220, 60);
 
-                    CustomMenuItem productItem = new CustomMenuItem(productBtn, true);
-                    CustomMenuItem billItem = new CustomMenuItem(billBtn, true);
-                    CustomMenuItem supplierItem = new CustomMenuItem(supplierBtn, true);
-
                     viewMenu.getItems().addAll(
-                        productItem,
-                        billItem,
-                        supplierItem
+                            new CustomMenuItem(productBtn, true),
+                            new CustomMenuItem(billBtn, true),
+                            new CustomMenuItem(supplierBtn, true)
                     );
 
-                    // SHOW VIEW MENU
-                    btn.setOnAction(e ->
-                        viewMenu.show(btn, Side.BOTTOM, 0, 0)
-                    );
+                    btn.setOnAction(e -> viewMenu.show(btn, Side.BOTTOM, 0, 0));
 
-                    // ACTIONS
                     productBtn.setOnAction(e -> {
                         viewMenu.hide();
                         showProductTable();
                     });
-
                     billBtn.setOnAction(e -> {
                         viewMenu.hide();
                         showBillTable();
                     });
-
                     supplierBtn.setOnAction(e -> {
                         viewMenu.hide();
                         showSupplierTable();
                     });
                 }
 
-                        //ISSUE
-                if (btn.getText().equals("Issue")) 
-                {
+                // ---------------- ISSUE & RETURN ----------------
+                if (btn.getText().equals("Issue")) {
                     btn.setOnAction(e -> app.showIssue());
                 }
-                        //RETURN
-                if (btn.getText().equals("Return")) 
-                {
+                if (btn.getText().equals("Return")) {
                     btn.setOnAction(e -> app.showReturn());
                 }
-                 
 
                 grid.add(btn, c, r);
             }
@@ -369,42 +296,33 @@ public class DashboardUI {
         BorderPane root = new BorderPane();
         root.setTop(topBar);
         root.setCenter(grid);
-
         scene = new Scene(root, 1024, 768);
     }
 
-    private void openUserManual() 
-    {
+    // ---------------------- USER MANUAL ----------------------
+    private void openUserManual() {
         try {
-            InputStream  is = getClass().getResourceAsStream(
-                "/USER MANUAL.pdf"
-            );
-
+            InputStream is = getClass().getResourceAsStream("/USER MANUAL.pdf");
             if (is == null) {
-                Alert alert = new Alert(Alert.AlertType.ERROR);
+                Alert alert = new Alert(AlertType.ERROR);
                 alert.setTitle("Error");
                 alert.setHeaderText("User Manual Not Found");
                 alert.setContentText("USER_MANUAL.pdf not found in resources folder.");
                 alert.showAndWait();
                 return;
             }
-
             Path tempFile = Files.createTempFile("UserManual", ".pdf");
             Files.copy(is, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
             Desktop.getDesktop().open(tempFile.toFile());
-
         } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
-    private void showProductTable()
-    {
+    // ---------------------- TABLE VIEWS ----------------------
+    private void showProductTable() {
         Stage stage = new Stage();
         TableView<model.Product> table = new TableView<>();
-
-        TableColumn<model.Product, Integer> pid = new TableColumn<>("PID");
-        pid.setCellValueFactory(d -> d.getValue().pidProperty().asObject());
 
         TableColumn<model.Product, String> name = new TableColumn<>("Product Name");
         name.setCellValueFactory(d -> d.getValue().nameProperty());
@@ -412,33 +330,35 @@ public class DashboardUI {
         TableColumn<model.Product, Integer> qty = new TableColumn<>("Stock");
         qty.setCellValueFactory(d -> d.getValue().qtyProperty().asObject());
 
-        table.getColumns().addAll(pid, name, qty);
+        TableColumn<model.Product, String> date = new TableColumn<>("Qty Updated Date");
+        date.setCellValueFactory(d -> d.getValue().updatedDateProperty());
+
+        table.getColumns().addAll(name, qty, date);
 
         ObservableList<model.Product> data = FXCollections.observableArrayList();
-
         try (Connection con = db.DBConnection.getConnection();
              Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery(
-                     "SELECT pid, product_name, qty_in_stock FROM product")) {
+             ResultSet rs = st.executeQuery("SELECT product_name, qty_in_stock, qty_updated_date FROM product")) {
 
             while (rs.next()) {
                 data.add(new model.Product(
-                        rs.getInt("pid"),
                         rs.getString("product_name"),
-                        rs.getInt("qty_in_stock")
+                        rs.getInt("qty_in_stock"),
+                        rs.getString("qty_updated_date")
                 ));
             }
+
         } catch (Exception e) {
+            e.printStackTrace();
         }
 
         table.setItems(data);
-        stage.setScene(new Scene(new VBox(table), 600, 400));
+        stage.setScene(new Scene(new VBox(table), 700, 400));
         stage.setTitle("Product Details");
         stage.show();
     }
 
-    private void showBillTable() 
-    {
+    private void showBillTable() {
         Stage stage = new Stage();
         TableView<model.Bill> table = new TableView<>();
 
@@ -451,11 +371,9 @@ public class DashboardUI {
         table.getColumns().addAll(billNo, amount);
 
         ObservableList<model.Bill> data = FXCollections.observableArrayList();
-
         try (Connection con = db.DBConnection.getConnection();
              Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery(
-                     "SELECT bill_no, bill_amount FROM bill_invoice")) {
+             ResultSet rs = st.executeQuery("SELECT bill_no, bill_amount FROM bill_invoice")) {
 
             while (rs.next()) {
                 data.add(new model.Bill(
@@ -463,7 +381,9 @@ public class DashboardUI {
                         rs.getDouble("bill_amount")
                 ));
             }
+
         } catch (Exception e) {
+            e.printStackTrace();
         }
 
         table.setItems(data);
@@ -472,8 +392,7 @@ public class DashboardUI {
         stage.show();
     }
 
-    private void showSupplierTable() 
-    {
+    private void showSupplierTable() {
         Stage stage = new Stage();
         TableView<model.Supplier> table = new TableView<>();
 
@@ -483,65 +402,75 @@ public class DashboardUI {
         TableColumn<model.Supplier, String> contact = new TableColumn<>("Contact");
         contact.setCellValueFactory(d -> d.getValue().contactProperty());
 
-        table.getColumns().addAll(name, contact);
+        TableColumn<model.Supplier, String> address = new TableColumn<>("Address");
+        address.setCellValueFactory(d -> d.getValue().addressProperty());
+
+        TableColumn<model.Supplier, String> ptype = new TableColumn<>("Product Type ID");
+ptype.setCellValueFactory(d -> d.getValue().ptypeIdProperty());
+
+
+        table.getColumns().addAll(name, contact, address, ptype);
 
         ObservableList<model.Supplier> data = FXCollections.observableArrayList();
-
         try (Connection con = db.DBConnection.getConnection();
              Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery(
-                     "SELECT name, contact_no FROM supplier")) {
+             ResultSet rs = st.executeQuery("SELECT name, contact_no, address, ptype_id FROM supplier")) {
 
             while (rs.next()) {
                 data.add(new model.Supplier(
-                        rs.getString("name"),
-                        rs.getString("contact_no")
-                ));
+    rs.getString("name"),
+    rs.getString("contact_no"),
+    rs.getString("address"),
+    rs.getString("ptype_id") // ✅ correct type
+));
+
             }
+
         } catch (Exception e) {
         }
 
         table.setItems(data);
-        stage.setScene(new Scene(new VBox(table), 600, 400));
+        stage.setScene(new Scene(new VBox(table), 800, 400));
         stage.setTitle("Supplier Details");
         stage.show();
     }
+
+    // ---------------------- BUDGET ANALYSIS ----------------------
     private void showBudgetAnalysis() {
         Label title = new Label("Budget Analysis Summary");
         title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
         Label content = new Label(
-            "• Shows total expenditure\n" +
-            "• Month-wise comparison\n" +
-            "• Supports HOD / Dean decisions"
+                "• Shows total expenditure\n" +
+                "• Month-wise comparison\n" +
+                "• Supports HOD / Dean decisions"
         );
 
         VBox box = new VBox(15, title, content);
         box.setPadding(new Insets(20));
         box.setAlignment(Pos.CENTER);
-        box.setStyle(
-            "-fx-background-color:#fff3cd;" +
-            "-fx-border-color:#ffcc00;" +
-            "-fx-border-radius:10;"
-        );
+        box.setStyle("-fx-background-color:#fff3cd;" +
+                "-fx-border-color:#ffcc00;" +
+                "-fx-border-radius:10;");
 
         Stage stage = new Stage();
         stage.setTitle("Budget Analysis");
         stage.setScene(new Scene(box, 400, 250));
         stage.show();
     }
+
+    // ---------------------- REQUEST INVENTORY ----------------------
     private void showRequestInventory() {
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Request Inventory");
         dialog.setHeaderText("New Inventory Request");
         dialog.setContentText("Enter item name and quantity:");
-
         Optional<String> result = dialog.showAndWait();
         if (!result.isPresent()) return;
 
         showInfoPanel(
-            "Request Submitted",
-            "Your request has been sent for HOD / Dean approval."
+                "Request Submitted",
+                "Your request has been sent for HOD / Dean approval."
         );
     }
 
@@ -552,11 +481,9 @@ public class DashboardUI {
         VBox box = new VBox(lbl);
         box.setPadding(new Insets(20));
         box.setAlignment(Pos.CENTER);
-        box.setStyle(
-            "-fx-background-color:#e7f3ff;" +
-            "-fx-border-color:#2196f3;" +
-            "-fx-border-radius:10;"
-        );
+        box.setStyle("-fx-background-color:#e7f3ff;" +
+                "-fx-border-color:#2196f3;" +
+                "-fx-border-radius:10;");
 
         Stage stage = new Stage();
         stage.setTitle(title);
