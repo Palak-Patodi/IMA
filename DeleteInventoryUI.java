@@ -150,26 +150,33 @@ public class DeleteInventoryUI {
 
         // ================= DATE → INVOICE =================
         dateBox.setOnAction(e -> {
-            billBox.getItems().clear();
+    billBox.getItems().clear();
 
-            try (Connection con = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
-                 PreparedStatement ps = con.prepareStatement(
-                         "SELECT bill_id FROM bill_invoice bi " +
-                         "JOIN supplier s ON bi.sid=s.sid " +
-                         "JOIN product p ON bi.pid=p.pid " +
-                         "WHERE p.product_name=? AND s.name=? AND bi.date=?")) {
+    if (dateBox.getValue() == null ||
+        nameBox.getValue() == null ||
+        supplierBox.getValue() == null) {
+        return; // ⛔ Prevent crash
+    }
 
-                ps.setString(1, nameBox.getValue());
-                ps.setString(2, supplierBox.getValue());
-                ps.setDate(3, Date.valueOf(dateBox.getValue()));
+    try (Connection con = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+         PreparedStatement ps = con.prepareStatement(
+                 "SELECT bill_id FROM bill_invoice bi " +
+                 "JOIN supplier s ON bi.sid=s.sid " +
+                 "JOIN product p ON bi.pid=p.pid " +
+                 "WHERE p.product_name=? AND s.name=? AND bi.date=?")) {
 
-                ResultSet rs = ps.executeQuery();
-                while (rs.next()) billBox.getItems().add(rs.getInt(1));
-            } catch (Exception ex) {
-                showError(ex);
-            }
-        });
+        ps.setString(1, nameBox.getValue());
+        ps.setString(2, supplierBox.getValue());
+        ps.setDate(3, Date.valueOf(dateBox.getValue()));
 
+        ResultSet rs = ps.executeQuery();
+        while (rs.next()) {
+            billBox.getItems().add(rs.getInt(1));
+        }
+    } catch (Exception ex) {
+        showError(ex);
+    }
+});
         // ================= DELETE =================
         deleteBtn.setOnAction(e -> {
             if (billBox.getValue() == null) {
