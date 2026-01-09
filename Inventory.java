@@ -13,19 +13,31 @@ public class Inventory extends Application {
 
     private Stage stage;
 
-    /**
-     *
-     * @param stage
-     */
+    // 🔐 STORE LOGGED-IN USER ROLE
+    private static String userRole;
+
     @Override
     public void start(Stage stage) {
         this.stage = stage;
         stage.setTitle("Inventory Management Application");
-        stage.setResizable(true);   // enables maximize
-        showDashboard();
-        showLogin();
+        stage.setResizable(true);
+
+        showLogin();   // 🚀 ALWAYS start from login
+
         stage.show();
     }
+
+    // ================= AUTH STATE =================
+
+    public static void setUserRole(String role) {
+        userRole = role;
+    }
+
+    public static String getUserRole() {
+        return userRole;
+    }
+
+    // ================= NAVIGATION =================
 
     // Show Login Page
     public void showLogin() {
@@ -39,33 +51,50 @@ public class Inventory extends Application {
         stage.setScene(dashboardUI.getScene());
     }
 
+    // 🔴 PROPER LOGOUT (FIXES YOUR BUG)
+    public void logout() {
+    userRole = null;
+    stage.setTitle("Inventory Management Application");
+    showLogin();
+}
+
+
+    // ================= FEATURE SCREENS =================
+
+    public void showAddInventory() {
+    AddInventoryUI ui = new AddInventoryUI(this);
+    if (ui.getScene() != null) {
+        stage.setScene(ui.getScene());
+    }
+}
+
+
+    public void showDeleteInventory() {
+    DeleteInventoryUI ui = new DeleteInventoryUI(this);
+    if (ui.getScene() != null) {
+        stage.setScene(ui.getScene());
+    }
+}
+
+
+    public void showIssueUI() {
+    IssueUI ui = new IssueUI(this);
+    if (ui.getScene() != null) {
+        stage.setScene(ui.getScene());
+    }
+}
+
+
+    public void showReturn() {
+    ReturnUI ui = new ReturnUI(this);
+    if (ui.getScene() != null) {
+        stage.setScene(ui.getScene());
+    }
+}
+
+    // ================= MAIN =================
+
     public static void main(String[] args) {
         launch(args);
     }
-
-    public void showAddInventory() 
-    {
-        AddInventoryUI ui = new AddInventoryUI(this);
-        stage.setScene(ui.getScene());
-    }
-    
-    public void showIssue() 
-    {
-        IssueUI issueUI = new IssueUI(this);
-        stage.setScene(issueUI.getScene());
-    }
-    
-    public void showReturn() 
-    {
-        ReturnUI returnUI = new ReturnUI(this);
-        stage.setScene(returnUI.getScene());
-    }
-
-    public void showDeleteInventory() 
-    {
-        DeleteInventoryUI ui = new DeleteInventoryUI(this);
-        stage.setScene(ui.getScene());
-    }
-
-
 }
