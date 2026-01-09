@@ -81,16 +81,33 @@ public class LoginUI {
     // ================= AUTH METHODS =================
 
     private boolean authenticate(String userId, String pass) {
-        String sql = "SELECT 1 FROM user WHERE user_id=? AND password=?";
-        try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, userId);
-            ps.setString(2, pass);
-            return ps.executeQuery().next();
-        } catch (Exception e) {
-            return false;
+    String sql = """
+        SELECT r.role_name
+        FROM user u
+        JOIN role r ON u.role_id = r.role_id
+        WHERE u.user_id=? AND u.password=?
+        """;
+
+    try (Connection con = DBConnection.getConnection();
+         PreparedStatement ps = con.prepareStatement(sql)) {
+
+        ps.setString(1, userId);
+        ps.setString(2, pass);
+
+        ResultSet rs = ps.executeQuery();
+
+        if (rs.next()) {
+            // 🔐 STORE ROLE
+            Inventory.setUserRole(rs.getString("role_name"));
+            return true;
         }
+        return false;
+
+    } catch (Exception e) {
+        return false;
     }
+}
+
 
     private boolean authenticateAdmin(String userId, String pass) {
         String sql = """
