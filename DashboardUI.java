@@ -282,7 +282,7 @@ public class DashboardUI {
 
                 // ---------------- ISSUE & RETURN ----------------
                 if (btn.getText().equals("Issue")) {
-                    btn.setOnAction(e -> app.showIssue());
+                    btn.setOnAction(e -> app.showIssueUI());
                 }
                 if (btn.getText().equals("Return")) {
                     btn.setOnAction(e -> app.showReturn());
@@ -337,21 +337,20 @@ public class DashboardUI {
 
         ObservableList<model.Product> data = FXCollections.observableArrayList();
         try (Connection con = db.DBConnection.getConnection();
-     Statement st = con.createStatement();
-     ResultSet rs = st.executeQuery("SELECT product_name, qty_in_stock, qty_updated_date FROM product WHERE status='ACTIVE'")) {
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT product_name, qty_in_stock, qty_updated_date FROM product where status='active'")) {
 
-    // This loop must be outside the parentheses
-    while (rs.next()) {
-        data.add(new model.Product(
-                rs.getString("product_name"),
-                rs.getInt("qty_in_stock"),
-                rs.getString("qty_updated_date")
-        ));
-    }
+            while (rs.next()) {
+                data.add(new model.Product(
+                        rs.getString("product_name"),
+                        rs.getInt("qty_in_stock"),
+                        rs.getString("qty_updated_date")
+                ));
+            }
 
-} catch (Exception e) {
-    e.printStackTrace();
-}
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         table.setItems(data);
         stage.setScene(new Scene(new VBox(table), 700, 400));
