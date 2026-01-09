@@ -12,9 +12,19 @@ import java.sql.*;
 
 public class AddInventoryUI {
 
-    private final Scene scene;
+    private Scene scene;
 
-    public AddInventoryUI(Inventory app) {
+   public AddInventoryUI(Inventory app) {
+
+    if (!"Manager".equalsIgnoreCase(Inventory.getUserRole())) {
+        new Alert(Alert.AlertType.ERROR,
+            "Access Denied: Only Manager can add inventory").show();
+        app.showDashboard();
+        return;
+    }
+
+    // UI code continues
+
 
         GridPane grid = new GridPane();
         grid.setPadding(new Insets(30));
