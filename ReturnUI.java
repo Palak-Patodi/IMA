@@ -10,9 +10,18 @@ import javafx.scene.text.FontWeight;
 
 public class ReturnUI {
 
-    private final Scene scene;
+    private Scene scene;
 
     public ReturnUI(Inventory app) {
+
+    // 🔒 ROLE CHECK
+    if (!"Manager".equalsIgnoreCase(Inventory.getUserRole())) {
+        new Alert(Alert.AlertType.ERROR,
+                "Access Denied: Only Manager can return products").show();
+        app.showDashboard();
+        scene = null;
+        return;
+    }
 
         GridPane grid = new GridPane();
         grid.setPadding(new Insets(50));
