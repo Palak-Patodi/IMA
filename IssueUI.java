@@ -17,9 +17,17 @@ import java.time.LocalDate;
 
 public class IssueUI {
 
-    private final Scene scene;
+    private Scene scene;
 
     public IssueUI(Inventory app) {
+
+    // 🔒 ROLE CHECK
+    if (!"Manager".equalsIgnoreCase(Inventory.getUserRole())) {
+        new Alert(Alert.AlertType.ERROR,
+                "Access Denied: Only Manager can issue inventory").show();
+        app.showDashboard();
+        return;
+    }
 
         GridPane grid = new GridPane();
         grid.setPadding(new Insets(40));
@@ -169,7 +177,7 @@ public class IssueUI {
         try (Connection con = DBConnection.getConnection();
              Statement st = con.createStatement();
              ResultSet rs =
-                     st.executeQuery("SELECT pid, product_name, qty_in_stock FROM product")) {
+                     st.executeQuery("SELECT pid, product_name, qty_in_stock FROM product where status='active'")) {
 
             while (rs.next()) {
                 list.add(new Product(
