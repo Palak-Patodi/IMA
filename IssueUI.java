@@ -5,9 +5,10 @@ import db.DBConnection;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.GridPane;
+import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import model.Product;
@@ -17,157 +18,257 @@ import java.time.LocalDate;
 
 public class IssueUI {
 
-    private Scene scene;
+    private final Scene scene;
 
     public IssueUI(Inventory app) {
 
-    // 🔒 ROLE CHECK
-    if (!"Manager".equalsIgnoreCase(Inventory.getUserRole())) {
-        new Alert(Alert.AlertType.ERROR,
-                "Access Denied: Only Manager can issue inventory").show();
-        app.showDashboard();
-        return;
-    }
-
-        GridPane grid = new GridPane();
-        grid.setPadding(new Insets(40));
-        grid.setHgap(40);
-        grid.setVgap(30);
-        grid.setStyle("-fx-background-color:#d2b48c;");
-
-        Font labelFont = Font.font("Arial", FontWeight.BOLD, 18);
-        Font fieldFont = Font.font("Arial", 16);
-
-        ComboBox<Product> productBox = new ComboBox<>();
-        productBox.setPrefWidth(420);
-        loadProducts(productBox);
-
-        TextField issueTo = new TextField();
-        TextField issuedBy = new TextField();
-        TextField dept = new TextField();
-        TextField qty = new TextField();
-        TextField reason = new TextField();
-        DatePicker date = new DatePicker();
-
-        TextField[] fields = { issueTo, issuedBy, dept, qty, reason };
-        for (TextField f : fields) {
-            f.setPrefWidth(420);
-            f.setPrefHeight(40);
-            f.setFont(fieldFont);
+        // 🔒 ROLE CHECK
+        if (!"Manager".equalsIgnoreCase(Inventory.getUserRole())) {
+            new Alert(Alert.AlertType.ERROR,
+                    "Access Denied: Only Manager can issue inventory").show();
+            app.showDashboard();
         }
 
-        int row = 0;
+        GridPane grid = new GridPane();
 
-        grid.add(styledLabel("Product Name", labelFont), 0, row);
-        grid.add(productBox, 1, row++);
+        Label formTitle = new Label("ISSUE INVENTORY FORM");
+        formTitle.setFont(Font.font("Arial", FontWeight.EXTRA_BOLD, 26));
+        formTitle.setStyle("-fx-text-fill: #3E2723;");
 
-        grid.add(styledLabel("Issued To", labelFont), 0, row);
-        grid.add(issueTo, 1, row++);
+        grid.setPadding(new Insets(30));
+        grid.setHgap(40);
+        grid.setVgap(18);
+        grid.setStyle("-fx-background-color: #E2C49F;");
 
-        grid.add(styledLabel("Issued By", labelFont), 0, row);
-        grid.add(issuedBy, 1, row++);
+        ColumnConstraints col1 = new ColumnConstraints();
+        col1.setPrefWidth(220);
+        ColumnConstraints col2 = new ColumnConstraints();
+        col2.setPrefWidth(300);
+        ColumnConstraints col3 = new ColumnConstraints();
+        col3.setPrefWidth(220);
+        ColumnConstraints col4 = new ColumnConstraints();
+        col4.setPrefWidth(300);
 
-        grid.add(styledLabel("Dept Name", labelFont), 0, row);
-        grid.add(dept, 1, row++);
+        grid.getColumnConstraints().addAll(col1, col2, col3, col4);
 
-        grid.add(styledLabel("Quantity Issued", labelFont), 0, row);
-        grid.add(qty, 1, row++);
+        Font labelFont = Font.font("Arial", FontWeight.BOLD, 16);
 
-        grid.add(styledLabel("Reason", labelFont), 0, row);
-        grid.add(reason, 1, row++);
+        String fieldStyle = """
+            -fx-background-radius: 10;
+            -fx-border-radius: 10;
+            -fx-border-color: #C49A6C;
+            -fx-border-width: 1.5;
+            -fx-background-color: #FFF6E9;
+            -fx-font-size: 15px;
+        """;
 
-        grid.add(styledLabel("Issued Date", labelFont), 0, row);
-        grid.add(date, 1, row++);
+        // ================= LEFT SIDE =================
 
-        Button issueBtn = new Button("Issue");
-        issueBtn.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-        issueBtn.setOnAction(e ->
-                issueProduct(
-                        productBox.getValue(),
-                        issueTo.getText(),
-                        issuedBy.getText(),
-                        dept.getText(),
-                        qty.getText(),
-                        reason.getText(),
-                        date.getValue()
-                )
-        );
+        Label productLbl = new Label("Product Name");
+        productLbl.setFont(labelFont);
 
-        Button back = new Button("Back");
-        back.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        ComboBox<Product> productBox = new ComboBox<>();
+        productBox.setPrefSize(320, 42);
+        productBox.setStyle(fieldStyle);
+        loadProducts(productBox);
+
+        Label issueToLbl = new Label("Issued To");
+        issueToLbl.setFont(labelFont);
+
+        TextField issueTo = new TextField();
+        issueTo.setPrefSize(320, 42);
+        issueTo.setStyle(fieldStyle);
+
+        Label deptLbl = new Label("Dept Name");
+        deptLbl.setFont(labelFont);
+
+        // ✅ DEFAULT VALUE SET HERE
+        TextField dept = new TextField("Computer Science");
+        dept.setPrefSize(320, 42);
+        dept.setStyle(fieldStyle);
+        dept.setEditable(true); // Manager can overwrite
+
+        Label qtyLbl = new Label("Quantity Issued");
+        qtyLbl.setFont(labelFont);
+
+        TextField qty = new TextField();
+        qty.setPrefSize(320, 42);
+        qty.setStyle(fieldStyle);
+
+        grid.add(productLbl, 0, 0);
+        grid.add(productBox, 1, 0);
+
+        grid.add(issueToLbl, 0, 1);
+        grid.add(issueTo, 1, 1);
+
+        grid.add(deptLbl, 0, 2);
+        grid.add(dept, 1, 2);
+
+        grid.add(qtyLbl, 0, 3);
+        grid.add(qty, 1, 3);
+
+        // ================= RIGHT SIDE =================
+
+        Label reasonLbl = new Label("Reason");
+        reasonLbl.setFont(labelFont);
+
+        TextField reason = new TextField();
+        reason.setPrefSize(320, 42);
+        reason.setStyle(fieldStyle);
+
+        Label dateLbl = new Label("Issued Date");
+        dateLbl.setFont(labelFont);
+
+        DatePicker date = new DatePicker(LocalDate.now());
+        date.setPrefSize(320, 42);
+        date.setStyle(fieldStyle);
+
+        Label issuedByLbl = new Label("Issued By");
+        issuedByLbl.setFont(labelFont);
+
+        ComboBox<String> issuedBy = new ComboBox<>();
+        issuedBy.getItems().addAll("M01", "M02");
+        issuedBy.setPrefSize(320, 42);
+        issuedBy.setStyle(fieldStyle);
+
+        grid.add(reasonLbl, 2, 0);
+        grid.add(reason, 3, 0);
+
+        grid.add(dateLbl, 2, 1);
+        grid.add(date, 3, 1);
+
+        grid.add(issuedByLbl, 2, 2);
+        grid.add(issuedBy, 3, 2);
+
+        // ================= BUTTONS =================
+
+        Button issueBtn = new Button("SAVE");
+        Button back = new Button("BACK");
+
+        String buttonStyle = """
+            -fx-background-color: #8B5E34;
+            -fx-text-fill: white;
+            -fx-font-size: 16px;
+            -fx-font-weight: bold;
+            -fx-background-radius: 8;
+            -fx-padding: 12 35 12 35;
+        """;
+
+        issueBtn.setStyle(buttonStyle);
+        back.setStyle(buttonStyle);
+        issueBtn.setPrefSize(180, 50);
+        back.setPrefSize(180, 50);
+
+        HBox buttonBox = new HBox(40);
+        buttonBox.setAlignment(Pos.CENTER);
+        buttonBox.getChildren().addAll(issueBtn, back);
+
+        grid.add(buttonBox, 2, 6, 2, 1);
+
         back.setOnAction(e -> app.showDashboard());
 
-        grid.add(issueBtn, 1, row);
-        grid.add(back, 1, row + 1);
+        // ================= DATABASE LOGIC =================
 
-        scene = new Scene(grid, 1024, 768);
+        issueBtn.setOnAction(e -> {
+
+            if (productBox.getValue() == null ||
+                    issueTo.getText().isEmpty() ||
+                    dept.getText().isEmpty() ||
+                    qty.getText().isEmpty() ||
+                    issuedBy.getValue() == null ||
+                    date.getValue() == null) {
+
+                new Alert(Alert.AlertType.ERROR,
+                        "All fields are mandatory").show();
+                return;
+            }
+
+            int quantity;
+
+            try {
+                quantity = Integer.parseInt(qty.getText());
+                if (quantity <= 0) throw new Exception();
+            } catch (Exception ex) {
+                new Alert(Alert.AlertType.ERROR,
+                        "Enter valid quantity").show();
+                return;
+            }
+
+            try (Connection con = DBConnection.getConnection()) {
+
+                con.setAutoCommit(false);
+
+                PreparedStatement check = con.prepareStatement(
+                        "SELECT qty_in_stock FROM product WHERE pid=?");
+                check.setString(1, productBox.getValue().getPid());
+                ResultSet rs = check.executeQuery();
+
+                rs.next();
+                int stock = rs.getInt("qty_in_stock");
+
+                if (quantity > stock) {
+                    new Alert(Alert.AlertType.ERROR,
+                            "Insufficient stock! Available: " + stock).show();
+                    con.rollback();
+                    return;
+                }
+
+                PreparedStatement insert = con.prepareStatement(
+                        "INSERT INTO issue " +
+                                "(pid, issue_to, issued_by, dept_name, qty_issued, reason, date) " +
+                                "VALUES (?,?,?,?,?,?,?)");
+
+                insert.setString(1, productBox.getValue().getPid());
+                insert.setString(2, issueTo.getText());
+                insert.setString(3, issuedBy.getValue());
+                insert.setString(4, dept.getText());
+                insert.setInt(5, quantity);
+                insert.setString(6, reason.getText());
+                insert.setDate(7, Date.valueOf(date.getValue()));
+
+                insert.executeUpdate();
+
+                PreparedStatement update = con.prepareStatement(
+                        "UPDATE product SET qty_in_stock = qty_in_stock - ? WHERE pid=?");
+
+                update.setInt(1, quantity);
+                update.setString(2, productBox.getValue().getPid());
+                update.executeUpdate();
+
+                con.commit();
+
+                new Alert(Alert.AlertType.INFORMATION,
+                        "Product Issued Successfully").show();
+
+            } catch (Exception ex) {
+                new Alert(Alert.AlertType.ERROR,
+                        "Database Error").show();
+            }
+        });
+
+        VBox root = new VBox();
+        root.setPadding(new Insets(50));
+        root.setSpacing(35);
+        root.setStyle("-fx-background-color: #E2C49F;");
+
+        VBox cardContent = new VBox(30);
+        cardContent.setAlignment(Pos.TOP_CENTER);
+        cardContent.getChildren().addAll(formTitle, grid);
+
+        StackPane card = new StackPane(cardContent);
+        card.setPadding(new Insets(40));
+        card.setStyle("""
+            -fx-background-color: rgba(255,255,255,0.92);
+            -fx-background-radius: 20;
+            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 30, 0.4, 0, 10);
+        """);
+
+        root.getChildren().add(card);
+        scene = new Scene(root, 1024, 768);
     }
 
     public Scene getScene() {
         return scene;
-    }
-
-    // ---------------- DATABASE LOGIC ----------------
-
-    private void issueProduct(Product product, String to, String by, String dept,
-                              String qtyStr, String reason, LocalDate date) {
-
-        if (product == null || to.isEmpty() || by.isEmpty()
-                || dept.isEmpty() || qtyStr.isEmpty() || date == null) {
-            showAlert("All fields are mandatory");
-            return;
-        }
-
-        int qty;
-        try {
-            qty = Integer.parseInt(qtyStr);
-        } catch (NumberFormatException e) {
-            showAlert("Quantity must be a number");
-            return;
-        }
-
-        try (Connection con = DBConnection.getConnection()) {
-
-            con.setAutoCommit(false);
-
-            PreparedStatement check =
-                    con.prepareStatement("SELECT qty_in_stock FROM product WHERE pid=?");
-            check.setInt(1, product.getPid());
-            ResultSet rs = check.executeQuery();
-
-            if (!rs.next() || rs.getInt("qty_in_stock") < qty) {
-                showAlert("Insufficient stock!");
-                con.rollback();
-                return;
-            }
-
-            PreparedStatement insert =
-                    con.prepareStatement(
-                            "INSERT INTO issue (pid, issue_to, issued_by, dept_name, qty_issued, reason, date) " +
-                                    "VALUES (?, ?, ?, ?, ?, ?, ?)");
-            insert.setInt(1, product.getPid());
-            insert.setString(2, to);
-            insert.setString(3, by);
-            insert.setString(4, dept);
-            insert.setInt(5, qty);
-            insert.setString(6, reason);
-            insert.setDate(7, Date.valueOf(date));
-            insert.executeUpdate();
-
-            PreparedStatement update =
-                    con.prepareStatement(
-                            "UPDATE product SET qty_in_stock = qty_in_stock - ? WHERE pid=?");
-            update.setInt(1, qty);
-            update.setInt(2, product.getPid());
-            update.executeUpdate();
-
-            con.commit();
-            showAlert("Product issued successfully!");
-
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            showAlert("Database error occurred");
-        }
     }
 
     private void loadProducts(ComboBox<Product> box) {
@@ -177,11 +278,11 @@ public class IssueUI {
         try (Connection con = DBConnection.getConnection();
              Statement st = con.createStatement();
              ResultSet rs =
-                     st.executeQuery("SELECT pid, product_name, qty_in_stock FROM product where status='active'")) {
+                     st.executeQuery("SELECT pid, product_name, qty_in_stock FROM product")) {
 
             while (rs.next()) {
                 list.add(new Product(
-                        rs.getInt("pid"),
+                        rs.getString("pid"),
                         rs.getString("product_name"),
                         rs.getInt("qty_in_stock")
                 ));
@@ -192,18 +293,5 @@ public class IssueUI {
         }
 
         box.setItems(list);
-    }
-
-    private Label styledLabel(String text, Font font) {
-        Label l = new Label(text);
-        l.setFont(font);
-        return l;
-    }
-
-    private void showAlert(String msg) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION);
-        a.setHeaderText(null);
-        a.setContentText(msg);
-        a.show();
     }
 }
