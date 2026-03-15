@@ -13,18 +13,9 @@ import java.time.LocalDate;
 
 public class DeleteInventoryUI {
 
-    private Scene scene;
+    private final Scene scene;
 
     public DeleteInventoryUI(Inventory app) {
-
-    // 🔒 ROLE CHECK
-    if (!"Manager".equalsIgnoreCase(Inventory.getUserRole())) {
-        new Alert(Alert.AlertType.ERROR,
-            "Access Denied: Only Manager can delete inventory").show();
-        app.showDashboard();
-        return;
-    }
-
 
         GridPane grid = new GridPane();
         grid.setPadding(new Insets(60));
