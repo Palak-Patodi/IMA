@@ -6,7 +6,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
+import javafx.scene.layout.ColumnConstraints;
+
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
@@ -16,64 +17,203 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
+import javafx.scene.effect.GaussianBlur;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.paint.Color;
+import javafx.scene.image.ImageView;
+import javafx.scene.shape.Circle;
+
 public class LoginUI {
 
     private final Scene scene;
     private String currentUserForPasswordChange; // Added to track user
-
+    
     public LoginUI(Inventory app) {
 
-        Label title = new Label("INVENTORY MANAGEMENT APPLICATION");
-        title.setFont(Font.font("Arial", FontWeight.BOLD, 22));
+    Label title = new Label("INVENTORY MANAGEMENT APPLICATION");
+    title.setStyle(
+        "-fx-font-size: 28px;" +
+        "-fx-font-weight: bold;" +
+        "-fx-text-fill: #2C3E50;"
+    );
+    title.setFont(Font.font("Arial", FontWeight.EXTRA_BOLD, 28));
+    title.setTextFill(Color.web("#1F3A5F"));
+    
+    Label userLabel = new Label("USER ID :");
+    userLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #34495E;");
+    userLabel.setTextFill(Color.BLACK);
 
-        Label userLabel = new Label("USER ID :");
-        userLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+    TextField username = new TextField();
+    username.setPromptText("Enter User ID");
+    username.setPrefSize(220, 35);
 
-        TextField username = new TextField();
-        username.setPromptText("Enter User ID");
-        username.setPrefSize(220, 35);
+    Label passLabel = new Label("PASSWORD :");
+    passLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #34495E;");
+    passLabel.setTextFill(Color.BLACK);
+    
+    username.setStyle(
+    "-fx-background-radius: 6;" +
+    "-fx-border-radius: 6;" +
+    "-fx-border-color: #1E88E5;" +
+    "-fx-border-width: 2;" +
+    "-fx-background-color: white;" +
+    "-fx-text-fill: black;" +
+    "-fx-font-size: 15px;"
+);
 
-        Label passLabel = new Label("PASSWORD :");
-        passLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+    PasswordField password = new PasswordField();
+    password.setPromptText("Enter Password");
+    password.setPrefSize(220, 35);
+    
+    password.setStyle(
+    "-fx-background-radius: 6;" +
+    "-fx-border-radius: 6;" +
+    "-fx-border-color: #b0b0b0;" +
+    "-fx-border-width: 1.5;" +
+    "-fx-background-color: white;" +
+    "-fx-text-fill: black;" +
+    "-fx-font-size: 15px;"
+);
 
-        PasswordField password = new PasswordField();
-        password.setPromptText("Enter Password");
-        password.setPrefSize(220, 35);
+    GridPane form = new GridPane();
+    form.setAlignment(Pos.CENTER);
+    ColumnConstraints col1 = new ColumnConstraints();
+    col1.setMinWidth(150);
 
-        GridPane form = new GridPane();
-        form.setAlignment(Pos.CENTER);
-        form.setHgap(20);
-        form.setVgap(15);
-        form.add(userLabel, 0, 0);
-        form.add(username, 1, 0);
-        form.add(passLabel, 0, 1);
-        form.add(password, 1, 1);
+    ColumnConstraints col2 = new ColumnConstraints();
+    col2.setMinWidth(300);
 
-        Hyperlink retrievePassword = new Hyperlink("RETRIEVE PASSWORD");
+    form.getColumnConstraints().addAll(col1, col2);
 
-        Button loginBtn = new Button("LOGIN");
-        loginBtn.setPrefSize(160, 45);
+    form.setHgap(20);
+    form.setVgap(15);
+    form.add(userLabel, 0, 0);
+    form.add(username, 1, 0);
+    form.add(passLabel, 0, 1);
+    form.add(password, 1, 1);
 
-        Label errorLabel = new Label();
-        errorLabel.setTextFill(Color.RED);
+    Hyperlink retrievePassword = new Hyperlink("RETRIEVE PASSWORD");
+    retrievePassword.setFont(Font.font("Arial", FontWeight.SEMI_BOLD, 14));
+    retrievePassword.setTextFill(Color.web("#4DA3FF"));
+    retrievePassword.setUnderline(false);
+    retrievePassword.setVisited(false);
+    retrievePassword.setFocusTraversable(false);
 
-        loginBtn.setOnAction(e -> {
-            if (authenticate(username.getText().trim(), password.getText().trim())) {
-                app.showDashboard();
-            } else {
-                errorLabel.setText("Invalid credentials");
-            }
-        });
+    retrievePassword.setStyle(
+            "-fx-padding: 0;" +
+            "-fx-background-color: transparent;" +
+            "-fx-border-color: transparent;"
+    );
 
-        retrievePassword.setOnAction(e -> showAdminAuthUI());
+    Button loginBtn = new Button("LOGIN");
+    loginBtn.setDefaultButton(true);   // 👈 ENTER press karte hi login hoga
+    loginBtn.setPrefSize(160, 45);
+    loginBtn.setStyle(
+    "-fx-background-color: #8B5E34;" +
+    "-fx-text-fill: white;" +
+    "-fx-font-size: 16px;" +
+    "-fx-font-weight: bold;" +
+    "-fx-background-radius: 8;" +
+    "-fx-border-radius: 8;"
+);
 
-        VBox root = new VBox(25, title, form, retrievePassword, loginBtn, errorLabel);
-        root.setAlignment(Pos.CENTER);
-        root.setStyle("-fx-background-color:#d2b48c;");
+    
+        loginBtn.setOnMousePressed(e ->
+    loginBtn.setStyle(
+        "-fx-background-color: #7A4F2A;" +   // slightly darker brown
+        "-fx-text-fill: white;" +
+        "-fx-font-size: 16px;" +
+        "-fx-font-weight: bold;" +
+        "-fx-background-radius: 8;" +
+        "-fx-border-radius: 8;"
+    )
+);
 
-        scene = new Scene(root, 1024, 768);
+loginBtn.setOnMouseReleased(e ->
+    loginBtn.setStyle(
+        "-fx-background-color: #8B5E34;" +
+        "-fx-text-fill: white;" +
+        "-fx-font-size: 16px;" +
+        "-fx-font-weight: bold;" +
+        "-fx-background-radius: 8;" +
+        "-fx-border-radius: 8;"
+    )
+);
+
+    Label errorLabel = new Label();
+    errorLabel.setTextFill(Color.RED);
+
+    loginBtn.setOnAction(e -> {
+        if (authenticate(username.getText().trim(), password.getText().trim())) {
+            app.showDashboard();
+        } else {
+            errorLabel.setText("Invalid credentials");
+        }
+    });
+
+    retrievePassword.setOnAction(e -> showAdminAuthUI());
+
+    // ===== BACKGROUND IMAGE VIEW =====
+    ImageView background = new ImageView(
+            new javafx.scene.image.Image(
+                    getClass().getResource("/images/pexels-canmiless-5860937.jpg").toExternalForm()
+            )
+    );
+    background.setPreserveRatio(false);
+
+    // ===== BLUR EFFECT =====
+    GaussianBlur blur = new GaussianBlur(15);
+    background.setEffect(blur);
+
+    // ===== DARK OVERLAY =====
+    Rectangle overlay = new Rectangle();
+    overlay.setFill(Color.rgb(0, 0, 0, 0.35)); // 35% dark overlay
+
+    // ===== LOGO =====
+    ImageView logo = new ImageView(
+            new javafx.scene.image.Image(
+                    getClass().getResource("/images/banasthali_logo.jpeg").toExternalForm()
+            )
+    );
+    logo.setFitWidth(140);
+    logo.setFitHeight(140);
+    logo.setPreserveRatio(false);
+
+    // Create circular clip
+    Circle clip = new Circle(70, 70, 70);
+    logo.setClip(clip);
+
+    logo.setEffect(new javafx.scene.effect.DropShadow(25, Color.rgb(0,0,0,0.5)));
+
+    // ===== LOGIN BOX =====
+    VBox loginBox = new VBox(20, title, form, retrievePassword, loginBtn, errorLabel);
+    loginBox.setAlignment(Pos.CENTER);
+    loginBox.setPadding(new Insets(30));
+    loginBox.setMaxWidth(650);
+   loginBox.setStyle(
+        "-fx-background-color: rgba(245, 222, 179, 0.92);" +   // soft beige
+        "-fx-background-radius: 8;" +
+        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 35, 0.3, 0, 8);"
+);
+
+    // ===== CENTER LAYOUT =====
+    VBox centerLayout = new VBox(25, logo, loginBox);
+    centerLayout.setAlignment(Pos.CENTER);
+    centerLayout.setPadding(new Insets(40));
+
+    // ===== ROOT =====
+    StackPane root = new StackPane();
+    root.getChildren().addAll(background, overlay, centerLayout);
+
+    scene = new Scene(root, 1024, 768);
+
+    // ===== MAKE BACKGROUND RESPONSIVE =====
+    background.fitWidthProperty().bind(scene.widthProperty());
+    background.fitHeightProperty().bind(scene.heightProperty());
+
+    overlay.widthProperty().bind(scene.widthProperty());
+    overlay.heightProperty().bind(scene.heightProperty());
     }
-
     public Scene getScene() {
         return scene;
     }
@@ -81,6 +221,7 @@ public class LoginUI {
     // ================= AUTH METHODS =================
 
     private boolean authenticate(String userId, String pass) {
+
     String sql = """
         SELECT r.role_name
         FROM user u
@@ -88,26 +229,30 @@ public class LoginUI {
         WHERE u.user_id=? AND u.password=?
         """;
 
-    try (Connection con = DBConnection.getConnection();
-         PreparedStatement ps = con.prepareStatement(sql)) {
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
 
-        ps.setString(1, userId);
-        ps.setString(2, pass);
+            ps.setString(1, userId);
+            ps.setString(2, pass);
 
-        ResultSet rs = ps.executeQuery();
+            ResultSet rs = ps.executeQuery();
 
-        if (rs.next()) {
-            // 🔐 STORE ROLE
-            Inventory.setUserRole(rs.getString("role_name"));
-            return true;
+            if (rs.next()) {
+                String role = rs.getString("role_name");
+
+                Inventory.setUserRole(role);   // 👈 THIS IS THE IMPORTANT ADDITION
+                Inventory.setLoggedUser(userId);
+
+                return true;
+            }
+
+            return false;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
-        return false;
-
-    } catch (Exception e) {
-        return false;
     }
-}
-
 
     private boolean authenticateAdmin(String userId, String pass) {
         String sql = """
@@ -308,7 +453,7 @@ public class LoginUI {
         });
 
         VBox layout = new VBox(12,
-                new Label("⚠ Applies only to the selected user"),
+                new Label("Applies only to the selected user"),
                 newPass, confirm,
                 change,
                 warningLabel,
