@@ -4,14 +4,14 @@ import javafx.beans.property.*;
 
 public class Product {
 
-    private final IntegerProperty pid;
+    private final StringProperty pid;
     private final StringProperty name;
     private final IntegerProperty qty;
     private final StringProperty updatedDate;
 
     // ===== Constructor for ISSUE =====
-    public Product(int pid, String name, int qty) {
-        this.pid = new SimpleIntegerProperty(pid);
+    public Product(String pid, String name, int qty) {
+        this.pid = new SimpleStringProperty(pid);   // ✅ now correct
         this.name = new SimpleStringProperty(name);
         this.qty = new SimpleIntegerProperty(qty);
         this.updatedDate = null;
@@ -25,8 +25,12 @@ public class Product {
         this.updatedDate = new SimpleStringProperty(updatedDate);
     }
 
-    public int getPid() {
-        return pid.get();
+    public String getPid() {
+        return pid == null ? null : pid.get();
+    }
+
+    public StringProperty pidProperty() {
+        return pid;
     }
 
     public StringProperty nameProperty() {
@@ -41,7 +45,6 @@ public class Product {
         return updatedDate;
     }
 
-    // ✅ FOR COMBOBOX DISPLAY
     @Override
     public String toString() {
         return name.get() + " (Stock: " + qty.get() + ")";
