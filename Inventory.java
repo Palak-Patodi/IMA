@@ -13,6 +13,7 @@ import ui.IssueUI;
 import ui.ReturnUI;
 import ui.DeleteInventoryUI;
 import ui.AddOrderUI;
+import ui.ManageInventoryUI;
 
 public class Inventory extends Application {
 
@@ -113,5 +114,10 @@ public class Inventory extends Application {
 
     public static String getLoggedUser() {
         return loggedUser;
+    }
+    
+    public void showManageInventory() {
+        ManageInventoryUI ui = new ManageInventoryUI(this);
+        switchSceneWithFade(ui.getScene());
     }
 }
