@@ -67,9 +67,9 @@ public class BudgetAnalysisUI {
         box.setPrefWidth(1100);
 
         box.getChildren().addAll(
-                createPremiumCard("Total Budget", "₹2,50,000", "#6A85B6, #B8C6DB"),
-                createPremiumCard("Amount Spent", "₹1,50,000", "#FF9A9E, #FAD0C4"),
-                createPremiumCard("Remaining Balance", "₹1,00,000", "#56ab2f, #a8e063")
+       createPremiumCard("Total Budget", "₹" + data.getTotalBudget(), "#6A85B6, #B8C6DB"),
+createPremiumCard("Amount Spent", "₹" + data.getAmountSpent(), "#FF9A9E, #FAD0C4"),
+createPremiumCard("Remaining Balance", "₹" + data.getRemainingBalance(), "#56ab2f, #a8e063")
         );
 
         return box;
@@ -139,7 +139,7 @@ public class BudgetAnalysisUI {
 
         Circle hole = new Circle(80);
         hole.setFill(Color.WHITE);
-        Label center = new Label("₹ " + data.getTotalBudget() + "\nTotal Stock");
+        Label center = new Label("₹ " + data.getTotalBudget() + "\nTotal Budget");
         center.setFont(Font.font("Segoe UI", FontWeight.BOLD, 18));
         center.setAlignment(Pos.CENTER);
         center.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
@@ -149,14 +149,24 @@ public class BudgetAnalysisUI {
         
         StackPane donut = new StackPane(pieChart, hole, center);
 
-        VBox legend = new VBox(12);
+       VBox legend = new VBox(12);
 
-        legend.getChildren().addAll(
-                createLegendItem(ORANGE, "Furniture", "₹80,000"),
-                createLegendItem(BLUE, "Stationery", "₹60,000"),
-                createLegendItem(PURPLE, "Miscellaneous", "₹50,000"),
-                createLegendItem(GREEN, "Computer", "₹60,000")
-        );
+for (Map.Entry<String, Double> entry : data.getCategoryDistribution().entrySet()) {
+
+    String color;
+
+    switch (entry.getKey()) {
+        case "Furniture": color = ORANGE; break;
+        case "Stationery": color = BLUE; break;
+        case "Miscellaneous": color = PURPLE; break;
+        case "Computer": color = GREEN; break;
+        default: color = "#999";
+    }
+
+    legend.getChildren().add(
+        createLegendItem(color, entry.getKey(), "₹" + entry.getValue())
+    );
+}
 
         VBox layout = new VBox(20, donut, legend);
         layout.setAlignment(Pos.CENTER);
