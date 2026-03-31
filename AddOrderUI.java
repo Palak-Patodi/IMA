@@ -103,11 +103,10 @@ public class AddOrderUI {
         Label statusLbl = new Label("Order Status");
         statusLbl.setFont(labelFont);
 
-        ComboBox<String> orderStatus = new ComboBox<>();
-        orderStatus.getItems().addAll("IN_PROCESS", "COMPLETE");
-        orderStatus.setValue("IN_PROCESS");
-        orderStatus.setPrefSize(320, 42);
-        orderStatus.setStyle(fieldStyle);
+        Label orderStatusLabel = new Label("IN_PROCESS");
+        orderStatusLabel.setPrefSize(320, 42);
+        orderStatusLabel.setStyle(fieldStyle + "-fx-padding: 10 14 10 14;");
+        orderStatusLabel.setFont(Font.font("Arial", FontWeight.BOLD, 15));
 
         grid.add(dateLbl, 2, 0);
         grid.add(orderDate, 3, 0);
@@ -116,7 +115,7 @@ public class AddOrderUI {
         grid.add(qtyOrdered, 3, 1);
 
         grid.add(statusLbl, 2, 2);
-        grid.add(orderStatus, 3, 2);
+        grid.add(orderStatusLabel, 3, 2);
 
         // ---------------- BUTTONS ----------------
 
@@ -150,20 +149,29 @@ public class AddOrderUI {
             try (Connection con = DriverManager.getConnection(
                     "jdbc:mysql://localhost:3306/inventory_system",
                     "root",
-                    "Somya@2005")) {
+                    "pal@0908")) {
 
-                if (orderNo.getText().isEmpty())
+                if (orderNo.getText().trim().isEmpty())
                     throw new Exception("Enter Order No");
 
-                if (qtyOrdered.getText().isEmpty())
+                if (productName.getValue() == null || productName.getValue().trim().isEmpty())
+                    throw new Exception("Select a Product");
+
+                if (supplierName.getValue() == null || supplierName.getValue().trim().isEmpty())
+                    throw new Exception("Select a Supplier");
+
+                if (qtyOrdered.getText().trim().isEmpty())
                     throw new Exception("Enter Quantity");
+
+                if (orderDate.getValue() == null)
+                    throw new Exception("Select Order Date");
 
                 // Get PID
                 PreparedStatement ps1 = con.prepareStatement(
                         "SELECT pid FROM product WHERE product_name=?");
                 ps1.setString(1, productName.getValue());
                 ResultSet rs1 = ps1.executeQuery();
-                rs1.next();
+                if (!rs1.next()) throw new Exception("Product not found in database");
                 String pid = rs1.getString("pid");
 
                 // Get SID
@@ -171,26 +179,46 @@ public class AddOrderUI {
                         "SELECT sid FROM supplier WHERE name=?");
                 ps2.setString(1, supplierName.getValue());
                 ResultSet rs2 = ps2.executeQuery();
-                rs2.next();
+                if (!rs2.next()) throw new Exception("Supplier not found in database");
                 int sid = rs2.getInt("sid");
 
-                // INSERT INTO ORDER TABLE ONLY
+                // Check if this order_no already exists with PAID status
+                PreparedStatement checkPaid = con.prepareStatement(
+                    "SELECT order_status FROM order_table " +
+                    "WHERE order_no=? AND record_status='ACTIVE' LIMIT 1");
+                checkPaid.setString(1, orderNo.getText().trim());
+                ResultSet rsPaid = checkPaid.executeQuery();
+                if (rsPaid.next()) {
+                    String existingStatus = rsPaid.getString("order_status");
+                    if ("PAID".equals(existingStatus)) {
+                        throw new Exception("Order No '" + orderNo.getText() +
+                                "' is already PAID. Cannot reuse it.");
+                    }
+                }
+
+                // INSERT INTO ORDER TABLE
                 PreparedStatement insertOrder = con.prepareStatement(
                         "INSERT INTO order_table " +
-                                "(order_no, pid, sid, order_date, qty_ordered, order_status, record_status) " +
-                                "VALUES (?,?,?,?,?,?, 'ACTIVE')");
+                        "(order_no, pid, sid, order_date, qty_ordered, " +
+                        " order_status, record_status) " +
+                        "VALUES (?,?,?,?,?,'IN_PROCESS','ACTIVE')");
 
-                insertOrder.setString(1, orderNo.getText());
+                insertOrder.setString(1, orderNo.getText().trim());
                 insertOrder.setString(2, pid);
                 insertOrder.setInt(3, sid);
                 insertOrder.setDate(4, java.sql.Date.valueOf(orderDate.getValue()));
-                insertOrder.setInt(5, Integer.parseInt(qtyOrdered.getText()));
-                insertOrder.setString(6, orderStatus.getValue());
-
+                insertOrder.setInt(5, Integer.parseInt(qtyOrdered.getText().trim()));
                 insertOrder.executeUpdate();
 
                 new Alert(Alert.AlertType.INFORMATION,
                         "Order added successfully").show();
+
+                // Reset form
+                orderNo.clear();
+                productName.setValue(null);
+                supplierName.setValue(null);
+                qtyOrdered.clear();
+                orderDate.setValue(null);
 
             } catch (Exception ex) {
                 new Alert(Alert.AlertType.ERROR, ex.getMessage()).show();
@@ -226,21 +254,25 @@ public class AddOrderUI {
         try (Connection con = DriverManager.getConnection(
                 "jdbc:mysql://localhost:3306/inventory_system",
                 "root",
-                "Somya@2005");
+                "pal@0908");
              PreparedStatement ps = con.prepareStatement(query);
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 combo.getItems().add(rs.getString(1));
             }
+
         } catch (Exception e) {
+            // Surface the error so it's visible during development
+            new Alert(Alert.AlertType.ERROR,
+                    "Failed to load dropdown data:\n" + e.getMessage()).show();
         }
     }
 
     private void setupComboBox(ComboBox<String> combo, String query, String fieldStyle) {
 
-        combo.setEditable(true);
-        combo.setPrefSize(320, 42);
+        combo.setEditable(false);   // ← changed from true: prevents the listener
+        combo.setPrefSize(320, 42); //   from interfering with item selection
         combo.setStyle(fieldStyle);
 
         loadData(combo, query);
@@ -252,9 +284,5 @@ public class AddOrderUI {
         combo.setOnMouseExited(e ->
                 combo.setStyle(fieldStyle)
         );
-
-        combo.getEditor().textProperty().addListener((obs, oldVal, newVal) -> {
-            combo.show();
-        });
     }
 }
