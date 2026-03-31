@@ -149,7 +149,7 @@ public class AddOrderUI {
             try (Connection con = DriverManager.getConnection(
                     "jdbc:mysql://localhost:3306/inventory_system",
                     "root",
-                    "pal@0908")) {
+                    "")) {
 
                 if (orderNo.getText().trim().isEmpty())
                     throw new Exception("Enter Order No");
@@ -254,7 +254,7 @@ public class AddOrderUI {
         try (Connection con = DriverManager.getConnection(
                 "jdbc:mysql://localhost:3306/inventory_system",
                 "root",
-                "pal@0908");
+                "");
              PreparedStatement ps = con.prepareStatement(query);
              ResultSet rs = ps.executeQuery()) {
 
