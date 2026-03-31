@@ -46,6 +46,10 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import java.util.Properties;
 
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+
 
 public class DashboardUI {
 
@@ -113,7 +117,7 @@ public class DashboardUI {
         logout.setFont(Font.font("Arial", FontWeight.BOLD, 20));
         logout.setOnMouseClicked((MouseEvent e) -> app.showLogin());
 
-        Label greetingLabel = new Label(getGreeting());
+        Label greetingLabel = new Label(getGreeting() + "   |   " + getIndianDateTime());
         greetingLabel.setFont(Font.font("Arial", FontWeight.BOLD, 20));
 
         String user = Inventory.getLoggedUser();
@@ -269,7 +273,6 @@ public class DashboardUI {
                     Button addBtn = new Button("Bill Received");
                  
                     Button modifyBtn = new Button("Modify");
-                    
                     
 
                     String bigMenuStyle = "-fx-font-size: 22px;" +
@@ -485,9 +488,28 @@ public class DashboardUI {
         darkOverlay.setFill(Color.rgb(0, 0, 0, 0.5));
 
         // ===== CENTER STACK =====
+        Label deptBox = new Label("Aim & Act Department (Computer Science)");
+
+        deptBox.setStyle(
+                "-fx-background-color: linear-gradient(to bottom, #FFF3E0, #D7B98E);" +
+                "-fx-text-fill:#3E2723;" +
+                "-fx-font-size:26px;" +
+                "-fx-font-weight:bold;" +
+                "-fx-padding:10 40 10 40;" +
+                "-fx-background-radius:12;" +
+                "-fx-border-radius:12;" +
+                "-fx-border-color:#8B5E34;" +
+                "-fx-border-width:2;" +
+                "-fx-effect:dropshadow(gaussian, rgba(0,0,0,0.45), 18,0.4,4,4);"
+        );
+
+        StackPane.setAlignment(deptBox, Pos.TOP_CENTER);
+        deptBox.setTranslateY(25);
+
         StackPane centerStack = new StackPane(
                 bgView,
                 darkOverlay,
+                deptBox,
                 grid
         );
 
@@ -831,6 +853,7 @@ public class DashboardUI {
     // ================================================================
     // ---------------------- BUDGET ANALYSIS -------------------------
     // ================================================================
+    
     private void showBudgetAnalysis() {
 
         Stage stage = new Stage();
@@ -1014,16 +1037,27 @@ public class DashboardUI {
         if (role == null) role = "User";
         return greeting + ", " + role;
     }
+    private String getIndianDateTime() {
+
+        ZonedDateTime indiaTime =
+                ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+
+        DateTimeFormatter formatter =
+                DateTimeFormatter.ofPattern("EEE, dd MMM yyyy  hh:mm a");
+
+        return indiaTime.format(formatter);
+    }
 
     // ---------------------- REQUEST INVENTORY ----------------------
 
     private void showRecipientSelection() {
+
         Stage stage = new Stage();
 
         Label title = new Label("Select Recipient");
         title.setStyle("-fx-font-size:20; -fx-font-weight:bold; -fx-text-fill:#3E2723;");
 
-        Button hodBtn  = new Button("Send to HOD");
+        Button hodBtn = new Button("Send to HOD");
         Button deanBtn = new Button("Send to Dean");
 
         String style =
@@ -1034,11 +1068,19 @@ public class DashboardUI {
 
         hodBtn.setStyle(style);
         deanBtn.setStyle(style);
+
         hodBtn.setPrefWidth(160);
         deanBtn.setPrefWidth(160);
 
-        hodBtn.setOnAction(e -> { stage.close(); showProductForm("HOD");  });
-        deanBtn.setOnAction(e -> { stage.close(); showProductForm("Dean"); });
+        hodBtn.setOnAction(e -> {
+            stage.close();
+            showProductForm("HOD");
+        });
+
+        deanBtn.setOnAction(e -> {
+            stage.close();
+            showProductForm("Dean");
+        });
 
         HBox buttons = new HBox(20, hodBtn, deanBtn);
         buttons.setAlignment(Pos.CENTER);
@@ -1046,6 +1088,7 @@ public class DashboardUI {
         VBox root = new VBox(30, title, buttons);
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(40));
+
         root.setStyle(
                 "-fx-background-color:#F5DEB3;" +
                 "-fx-background-radius:10;" +
@@ -1053,198 +1096,241 @@ public class DashboardUI {
                 "-fx-border-width:2;"
         );
 
-        stage.setScene(new Scene(root, 350, 200));
+        stage.setScene(new Scene(root,350,200));
         stage.setTitle("Request Inventory");
         stage.show();
     }
-
     private void showProductForm(String recipient) {
-        Stage stage = new Stage();
 
-        Label title = new Label("Inventory Request");
-        title.setStyle("-fx-font-size:22; -fx-font-weight:bold;");
+    Stage stage = new Stage();
 
-        TextField product = new TextField();
-        product.setPromptText("Product Name");
+    Label title = new Label("Inventory Request");
+    title.setStyle("-fx-font-size:22; -fx-font-weight:bold;");
 
-        TextField qty = new TextField();
-        qty.setPromptText("Product Quantity");
+    TextField product = new TextField();
+    product.setPromptText("Product Name");
 
-        Button sendBtn = new Button("Send Request");
-        sendBtn.setStyle(
-                "-fx-background-color:#8B5E34;" +
-                "-fx-text-fill:white;" +
-                "-fx-font-size:16;"
+    TextField qty = new TextField();
+    qty.setPromptText("Product Quantity");
+
+    Button sendBtn = new Button("Send Request");
+    sendBtn.setStyle(
+            "-fx-background-color:#8B5E34;" +
+            "-fx-text-fill:white;" +
+            "-fx-font-size:16;"
+    );
+
+    sendBtn.setOnAction(e -> {
+        stage.close();
+        confirmEmailSend(recipient, product.getText(), qty.getText());
+    });
+
+    VBox root = new VBox(15,
+            title,
+            new Label("Product Name"), product,
+            new Label("Quantity"), qty,
+            sendBtn
+    );
+
+    root.setPadding(new Insets(30));
+    root.setAlignment(Pos.CENTER);
+    root.setStyle("-fx-background-color:#F5DEB3;");
+
+    stage.setScene(new Scene(root,350,300));
+    stage.show();
+}
+    private void confirmEmailSend(String recipient,
+                              String productName,
+                              String quantity) {
+
+    Stage stage = new Stage();
+
+    Label title = new Label("Confirm Request");
+    title.setStyle("-fx-font-size:20; -fx-font-weight:bold;");
+
+    Label msg = new Label("Do you really want to send the email?");
+    msg.setStyle("-fx-font-size:14;");
+
+    Button confirmBtn = new Button("Confirm");
+    Button cancelBtn = new Button("Cancel");
+
+    confirmBtn.setStyle(
+            "-fx-background-color:#8B5E34;" +
+            "-fx-text-fill:white;" +
+            "-fx-font-size:14;"
+    );
+
+    cancelBtn.setStyle(
+            "-fx-background-color:#D7B98E;" +
+            "-fx-text-fill:black;" +
+            "-fx-font-size:14;"
+    );
+
+    confirmBtn.setOnAction(e -> {
+
+        stage.close();
+        
+        sendEmail(recipient, productName, quantity);   // ⭐ EMAIL SEND
+
+        // Notification add
+        NotificationService.addNotification(
+            "Inventory request sent to " + recipient +
+            "\nProduct : " + productName +
+            "\nQuantity : " + quantity
         );
-        sendBtn.setOnAction(e -> {
-            stage.close();
-            confirmEmailSend(recipient, product.getText(), qty.getText());
-        });
+    });
 
-        VBox root = new VBox(15,
-                title,
-                new Label("Product Name"), product,
-                new Label("Quantity"), qty,
-                sendBtn
-        );
-        root.setPadding(new Insets(30));
-        root.setAlignment(Pos.CENTER);
-        root.setStyle("-fx-background-color:#F5DEB3;");
+    cancelBtn.setOnAction(e -> stage.close());
 
-        stage.setScene(new Scene(root, 350, 300));
-        stage.show();
-    }
+    HBox buttons = new HBox(15, confirmBtn, cancelBtn);
+    buttons.setAlignment(Pos.CENTER);
 
-    private void confirmEmailSend(String recipient, String productName, String quantity) {
-        Stage stage = new Stage();
+    VBox root = new VBox(20, title, msg, buttons);
+    root.setAlignment(Pos.CENTER);
+    root.setPadding(new Insets(30));
 
-        Label title = new Label("Confirm Request");
-        title.setStyle("-fx-font-size:20; -fx-font-weight:bold;");
+    root.setStyle(
+            "-fx-background-color:#F5DEB3;" +
+            "-fx-border-color:#8B5E34;" +
+            "-fx-border-width:2;" +
+            "-fx-background-radius:10;"
+    );
 
-        Label msg = new Label("Do you really want to send the email?");
-        msg.setStyle("-fx-font-size:14;");
-
-        Button confirmBtn = new Button("Confirm");
-        Button cancelBtn  = new Button("Cancel");
-
-        confirmBtn.setStyle(
-                "-fx-background-color:#8B5E34;" +
-                "-fx-text-fill:white;" +
-                "-fx-font-size:14;"
-        );
-        cancelBtn.setStyle(
-                "-fx-background-color:#D7B98E;" +
-                "-fx-text-fill:black;" +
-                "-fx-font-size:14;"
-        );
-
-        confirmBtn.setOnAction(e -> {
-            stage.close();
-            sendEmail(recipient, productName, quantity);
-            NotificationService.addNotification(
-                "Inventory request sent to " + recipient +
-                "\nProduct : " + productName +
-                "\nQuantity : " + quantity
-            );
-            showSuccessMessage();
-        });
-        cancelBtn.setOnAction(e -> stage.close());
-
-        HBox buttons = new HBox(15, confirmBtn, cancelBtn);
-        buttons.setAlignment(Pos.CENTER);
-
-        VBox root = new VBox(20, title, msg, buttons);
-        root.setAlignment(Pos.CENTER);
-        root.setPadding(new Insets(30));
-        root.setStyle(
-                "-fx-background-color:#F5DEB3;" +
-                "-fx-border-color:#8B5E34;" +
-                "-fx-border-width:2;" +
-                "-fx-background-radius:10;"
-        );
-
-        stage.setScene(new Scene(root, 350, 180));
-        stage.show();
-    }
-
+    stage.setScene(new Scene(root,350,180));
+    stage.show();
+}
     private void sendEmail(String recipient, String productName, String quantity) {
-        String toEmail = "";
 
-        try (Connection con = db.DBConnection.getConnection();
-             Statement st = con.createStatement()) {
+    String toEmail = "";
 
-            String query = recipient.equals("HOD")
-                    ? "SELECT email FROM user WHERE role_id = 2"
-                    : "SELECT email FROM user WHERE role_id = 3";
+    try(Connection con = db.DBConnection.getConnection();
+        Statement st = con.createStatement()) {
 
-            ResultSet rs = st.executeQuery(query);
-            if (rs.next()) {
-                toEmail = rs.getString("email");
-            }
+        String query;
 
-            System.out.println("Recipient Role : " + recipient);
-            System.out.println("Email fetched from DB : " + toEmail);
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        // Fetch email from database
+        if(recipient.equals("HOD")) {
+            query = "SELECT email FROM user WHERE role_id = 2";
+        } else {
+            query = "SELECT email FROM user WHERE role_id = 3";
         }
 
-        if (toEmail.isEmpty()) {
+        ResultSet rs = st.executeQuery(query);
+
+        if(rs.next()){
+            toEmail = rs.getString("email");
+        }
+
+        System.out.println("Recipient Role : " + recipient);
+        System.out.println("Email fetched from DB : " + toEmail);
+
+    } catch(Exception e){
+        e.printStackTrace();
+    }
+
+    // Email subject
+    String subject = "Inventory Request";
+
+    // Email body
+    String body = "Respected Sir,\n\n"
+        + "This is to inform you that a requirement for inventory items has been identified in the "
+        + "AIM & ACT Department (CS), Banasthali Vidyapith.\n\n"
+        + "Kindly approve the procurement as per the details mentioned below:\n\n"
+        + "Product Name : " + productName + "\n"
+        + "Required Quantity : " + quantity + " units\n\n"
+        + "These items are required for departmental use. You are kindly requested to grant approval "
+        + "to proceed with the necessary procurement at the earliest.\n\n"
+        + "Thank you for your support and consideration.\n\n"
+        + "Regards,\n"
+        + "Inventory Manager\n"
+        + "AIM & ACT Department (CS)\n"
+        + "Banasthali Vidyapith";
+
+    try {
+
+        Properties props = new Properties();
+
+        props.put("mail.smtp.host","smtp.gmail.com");
+        props.put("mail.smtp.port","587");
+        props.put("mail.smtp.auth","true");
+        props.put("mail.smtp.starttls.enable","true");
+        props.put("mail.smtp.starttls.required","true");
+        props.put("mail.smtp.ssl.trust","smtp.gmail.com");
+
+        Session session = Session.getInstance(props,
+            new Authenticator() {
+
+                protected PasswordAuthentication getPasswordAuthentication() {
+
+                    return new PasswordAuthentication(
+                        "g7447931@gmail.com",   // sender email
+                        "wducnqifrnmhxivd"      // app password
+                    );
+                }
+        });
+        session.setDebug(true);   // ⭐ SMTP debug
+
+        Message message = new MimeMessage(session);
+
+        message.setFrom(new InternetAddress("g7447931@gmail.com"));
+
+        message.setRecipients(
+                Message.RecipientType.TO,
+                InternetAddress.parse(toEmail)
+        );
+
+        message.setSubject(subject);
+        message.setText(body);
+            
+        Transport.send(message);
+
+        System.out.println("Email Sent Successfully to : " + toEmail);
+        showSuccessMessage();
+        
+        if(toEmail.isEmpty()){
             System.out.println("No email found for role : " + recipient);
             return;
+            
         }
 
-        String subject = "Inventory Request";
-        String body = "Respected " + recipient + ",\n\n"
-                + "An inventory request has been generated.\n\n"
-                + "Product Name : " + productName + "\n"
-                + "Quantity : " + quantity + "\n\n"
-                + "Regards,\nInventory Manager";
-
-        try {
-            Properties props = new Properties();
-            props.put("mail.smtp.host","smtp.gmail.com");
-            props.put("mail.smtp.port","587");
-            props.put("mail.smtp.auth","true");
-            props.put("mail.smtp.starttls.enable","true");
-            props.put("mail.smtp.ssl.trust","smtp.gmail.com");
-
-            Session session = Session.getInstance(props,
-                new Authenticator() {
-                    protected PasswordAuthentication getPasswordAuthentication() {
-                        return new PasswordAuthentication(
-                            "g7447931@gmail.com",
-                            "gqkyzcrkzjngfzow"
-                        );
-                    }
-                });
-            session.setDebug(true);
-
-            Message message = new MimeMessage(session);
-            message.setFrom(new InternetAddress("g7447931@gmail.com"));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
-            message.setSubject(subject);
-            message.setText(body);
-
-            Transport.send(message);
-            System.out.println("Email Sent Successfully to : " + toEmail);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    } catch(Exception e){
+        e.printStackTrace();
     }
-
+}
     private void showSuccessMessage() {
-        Stage stage = new Stage();
 
-        Label title = new Label("Email Sent");
-        title.setStyle("-fx-font-size:20; -fx-font-weight:bold;");
+    Stage stage = new Stage();
 
-        Label msg = new Label("Inventory request email has been sent successfully.");
-        msg.setWrapText(true);
+    Label title = new Label("Email Sent");
+    title.setStyle("-fx-font-size:20; -fx-font-weight:bold;");
 
-        Button ok = new Button("OK");
-        ok.setStyle(
-                "-fx-background-color:#8B5E34;" +
-                "-fx-text-fill:white;" +
-                "-fx-font-size:14;"
-        );
-        ok.setOnAction(e -> stage.close());
+    Label msg = new Label("Inventory request email has been sent successfully.");
+    msg.setWrapText(true);
 
-        VBox root = new VBox(20, title, msg, ok);
-        root.setAlignment(Pos.CENTER);
-        root.setPadding(new Insets(30));
-        root.setStyle(
-                "-fx-background-color:#F5DEB3;" +
-                "-fx-border-color:#8B5E34;" +
-                "-fx-border-width:2;" +
-                "-fx-background-radius:10;"
-        );
+    Button ok = new Button("OK");
 
-        stage.setScene(new Scene(root, 350, 180));
-        stage.show();
-    }
+    ok.setStyle(
+            "-fx-background-color:#8B5E34;" +
+            "-fx-text-fill:white;" +
+            "-fx-font-size:14;"
+    );
 
+    ok.setOnAction(e -> stage.close());
+
+    VBox root = new VBox(20, title, msg, ok);
+    root.setAlignment(Pos.CENTER);
+    root.setPadding(new Insets(30));
+
+    root.setStyle(
+            "-fx-background-color:#F5DEB3;" +
+            "-fx-border-color:#8B5E34;" +
+            "-fx-border-width:2;" +
+            "-fx-background-radius:10;"
+    );
+
+    stage.setScene(new Scene(root,350,180));
+    stage.show();
+}
     public Scene getScene() {
         return scene;
     }
