@@ -262,13 +262,15 @@ public class DashboardUI {
                 // ---------------- UPDATE DROPDOWN ----------------
                 if (btn.getText().equals("Update")) {
                     ContextMenu updateMenu = new ContextMenu();
-                    Button addBtn = new Button("Add");
                     
-                 //------------------changes by me    25-----------
+                  //------------------changes by me    26-----------  
+                    Button orderPlacedBtn = new Button("Order Placed");
+                    
+                    Button addBtn = new Button("Bill Received");
                  
                     Button modifyBtn = new Button("Modify");
                     
-                    Button orderPlacedBtn = new Button("Order Placed");
+                    
 
                     String bigMenuStyle = "-fx-font-size: 22px;" +
                         "-fx-background-color: #F5DEB3;" +   // same beige as login
@@ -279,15 +281,11 @@ public class DashboardUI {
                         "-fx-text-fill: #2C3E50;";
 
                     orderPlacedBtn.setStyle(bigMenuStyle);
-                    
                     addBtn.setStyle(bigMenuStyle);
-                    
                     modifyBtn.setStyle(bigMenuStyle);
 
                     orderPlacedBtn.setPrefSize(200, 60);
-                    
                     addBtn.setPrefSize(200, 60);
-                   
                     modifyBtn.setPrefSize(200, 60);
 
                     CustomMenuItem addItem = new CustomMenuItem(addBtn, true);
@@ -298,17 +296,17 @@ public class DashboardUI {
 
                     btn.setOnAction(e -> updateMenu.show(btn, Side.BOTTOM, 0, 0));
 
-                    addBtn.setOnAction(e -> {
-                        updateMenu.hide();
-                        app.showAddInventory();
-                    });
                     orderPlacedBtn.setOnAction(e -> {
                         updateMenu.hide();
                         app.showAddOrder();
                     });
                     
+                    addBtn.setOnAction(e -> {
+                        updateMenu.hide();
+                        app.showAddInventory();
+                    });
 
-                    // --------- MODIFY DROPDOWN ----------
+                    // --------- MODIFY  ----------
                    modifyBtn.setOnAction(e -> {
                         updateMenu.hide();
                         app.showManageInventory();   // NEW SCREEN
