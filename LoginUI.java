@@ -1,3 +1,4 @@
+
 package ui;
 
 import com.mycompany.inventory.Inventory;
@@ -498,12 +499,19 @@ loginBtn.setOnMouseReleased(e ->
             }
         });
 
-        VBox layout = new VBox(14, heading, userIdDisplay, newPass, confirm, change, successLabel, status);
+        Label newPassLabel = new Label("New Password :");
+newPassLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #34495E;");
+
+Label confirmLabel = new Label("Confirm New Password :");
+confirmLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #34495E;");
+
+VBox layout = new VBox(8, heading, userIdDisplay, newPassLabel, newPass, confirmLabel, confirm, change, successLabel, status);
+
         layout.setAlignment(Pos.CENTER);
         layout.setPadding(new Insets(28));
         layout.setStyle("-fx-background-color: rgba(245,222,179,0.97); -fx-background-radius: 8;");
 
-        stage.setScene(new Scene(layout, 380, 360));
+        stage.setScene(new Scene(layout, 380, 420));
         stage.setResizable(false);
         stage.show();
     }
