@@ -566,20 +566,22 @@ public class DashboardUI {
 
         String query =
             "SELECT p.product_name, " +
-            "       ot.qty_ordered, " +
-            "       ot.order_date, " +
-            "       ot.order_status, " +
-            "       bi.qty_received, " +
-            "       bi.received_date, " +
-            "       bi.bill_no, " +
-            "       bi.bill_amount, " +
-            "       bi.bill_status, " +
-            "       s.name  AS supplier_name, " +
-            "       s.contact_no " +
+            "ot.qty_ordered, " +
+            "ot.order_date, " +
+            "ot.order_status, " +
+            "bi.qty_received, " +
+            "bi.received_date, " +
+            "bi.bill_no, " +
+            "bi.bill_amount, " +
+            "bi.bill_status, " +
+            "s.name  AS supplier_name, " +
+            "s.contact_no " +
             "FROM order_table ot " +
             "JOIN product p       ON ot.pid = p.pid " +
             "JOIN supplier s      ON ot.sid = s.sid " +
-            "LEFT JOIN bill_invoice bi ON bi.entry_id = ot.entry_id " +
+            "LEFT JOIN bill_invoice bi " +
+            "ON bi.entry_id = ot.entry_id " +
+            "AND bi.record_status = 'ACTIVE' " +
             "WHERE ot.record_status = 'ACTIVE' " +
             "ORDER BY ot.order_date DESC";
 
