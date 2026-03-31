@@ -106,7 +106,7 @@ public class LoginUI {
     );
 
     Button loginBtn = new Button("LOGIN");
-    loginBtn.setDefaultButton(true);   // 👈 ENTER press karte hi login hoga
+    loginBtn.setDefaultButton(true);
     loginBtn.setPrefSize(160, 45);
     loginBtn.setStyle(
     "-fx-background-color: #8B5E34;" +
@@ -117,10 +117,9 @@ public class LoginUI {
     "-fx-border-radius: 8;"
 );
 
-    
         loginBtn.setOnMousePressed(e ->
     loginBtn.setStyle(
-        "-fx-background-color: #7A4F2A;" +   // slightly darker brown
+        "-fx-background-color: #7A4F2A;" +
         "-fx-text-fill: white;" +
         "-fx-font-size: 16px;" +
         "-fx-font-weight: bold;" +
@@ -151,7 +150,8 @@ loginBtn.setOnMouseReleased(e ->
         }
     });
 
-    retrievePassword.setOnAction(e -> showAdminAuthUI());
+    // CHANGED: directly show user ID entry (no admin auth needed)
+    retrievePassword.setOnAction(e -> showEnterUserIdUI());
 
     // ===== BACKGROUND IMAGE VIEW =====
     ImageView background = new ImageView(
@@ -167,7 +167,7 @@ loginBtn.setOnMouseReleased(e ->
 
     // ===== DARK OVERLAY =====
     Rectangle overlay = new Rectangle();
-    overlay.setFill(Color.rgb(0, 0, 0, 0.35)); // 35% dark overlay
+    overlay.setFill(Color.rgb(0, 0, 0, 0.35));
 
     // ===== LOGO =====
     ImageView logo = new ImageView(
@@ -190,8 +190,8 @@ loginBtn.setOnMouseReleased(e ->
     loginBox.setAlignment(Pos.CENTER);
     loginBox.setPadding(new Insets(30));
     loginBox.setMaxWidth(650);
-   loginBox.setStyle(
-        "-fx-background-color: rgba(245, 222, 179, 0.92);" +   // soft beige
+    loginBox.setStyle(
+        "-fx-background-color: rgba(245, 222, 179, 0.92);" +
         "-fx-background-radius: 8;" +
         "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 35, 0.3, 0, 8);"
 );
@@ -214,6 +214,7 @@ loginBtn.setOnMouseReleased(e ->
     overlay.widthProperty().bind(scene.widthProperty());
     overlay.heightProperty().bind(scene.heightProperty());
     }
+
     public Scene getScene() {
         return scene;
     }
@@ -222,12 +223,12 @@ loginBtn.setOnMouseReleased(e ->
 
     private boolean authenticate(String userId, String pass) {
 
-    String sql = """
-        SELECT r.role_name
-        FROM user u
-        JOIN role r ON u.role_id = r.role_id
-        WHERE u.user_id=? AND u.password=?
-        """;
+        String sql = """
+            SELECT r.role_name
+            FROM user u
+            JOIN role r ON u.role_id = r.role_id
+            WHERE u.user_id=? AND u.password=?
+            """;
 
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -239,10 +240,8 @@ loginBtn.setOnMouseReleased(e ->
 
             if (rs.next()) {
                 String role = rs.getString("role_name");
-
-                Inventory.setUserRole(role);   // 👈 THIS IS THE IMPORTANT ADDITION
+                Inventory.setUserRole(role);
                 Inventory.setLoggedUser(userId);
-
                 return true;
             }
 
@@ -254,143 +253,147 @@ loginBtn.setOnMouseReleased(e ->
         }
     }
 
-    private boolean authenticateAdmin(String userId, String pass) {
-        String sql = """
-                SELECT 1 FROM user u
-                JOIN role r ON u.role_id = r.role_id
-                WHERE u.user_id=? AND u.password=?
-                AND r.role_name IN ('Dean','HOD','Manager')
-                """;
+    // ================= STEP 1: ENTER USER ID =================
+    // User simply types their own user_id (e.g. M01, H01, D01).
+    // No admin authentication required.
+
+    private void showEnterUserIdUI() {
+        Stage stage = new Stage();
+        stage.setTitle("Retrieve Password");
+
+        Label heading = new Label("Retrieve Password");
+        heading.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+        heading.setTextFill(Color.web("#1F3A5F"));
+
+        Label instruction = new Label("Enter your User ID (e.g. M01, H01, D01)");
+        instruction.setStyle("-fx-font-size: 13px; -fx-text-fill: #555;");
+
+        TextField userIdField = new TextField();
+        userIdField.setPromptText("Enter User ID");
+        userIdField.setPrefSize(260, 35);
+        userIdField.setStyle(
+                "-fx-background-radius: 6;" +
+                "-fx-border-radius: 6;" +
+                "-fx-border-color: #1E88E5;" +
+                "-fx-border-width: 2;" +
+                "-fx-background-color: white;" +
+                "-fx-text-fill: black;" +
+                "-fx-font-size: 14px;"
+        );
+
+        Label status = new Label();
+        status.setTextFill(Color.RED);
+
+        Button nextBtn = new Button("Next");
+        nextBtn.setPrefSize(120, 38);
+        nextBtn.setStyle(
+                "-fx-background-color: #8B5E34;" +
+                "-fx-text-fill: white;" +
+                "-fx-font-size: 14px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-background-radius: 8;" +
+                "-fx-border-radius: 8;"
+        );
+
+        nextBtn.setOnAction(e -> {
+            String enteredId = userIdField.getText().trim();
+            if (enteredId.isEmpty()) {
+                status.setText("Please enter a User ID.");
+                return;
+            }
+            if (userExists(enteredId)) {
+                currentUserForPasswordChange = enteredId;
+                stage.close();
+                showSecretQuestionUI(enteredId);
+            } else {
+                status.setText("User ID not found.");
+            }
+        });
+
+        VBox layout = new VBox(14, heading, instruction, userIdField, nextBtn, status);
+        layout.setAlignment(Pos.CENTER);
+        layout.setPadding(new Insets(28));
+        layout.setStyle("-fx-background-color: rgba(245,222,179,0.97); -fx-background-radius: 8;");
+
+        stage.setScene(new Scene(layout, 360, 260));
+        stage.setResizable(false);
+        stage.show();
+    }
+
+    // ================= CHECK IF USER EXISTS =================
+
+    private boolean userExists(String userId) {
+        String sql = "SELECT 1 FROM user WHERE user_id = ?";
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, userId);
-            ps.setString(2, pass);
             return ps.executeQuery().next();
         } catch (Exception e) {
             return false;
         }
     }
 
-    // ================= ADMIN AUTH =================
-
-    private void showAdminAuthUI() {
-        Stage stage = new Stage();
-
-        TextField adminId = new TextField();
-        adminId.setPromptText("Admin User ID");
-
-        PasswordField adminPass = new PasswordField();
-        adminPass.setPromptText("Admin Password");
-
-        Label status = new Label();
-
-        Button authBtn = new Button("Authorize");
-
-        authBtn.setOnAction(e -> {
-            if (authenticateAdmin(adminId.getText().trim(), adminPass.getText().trim())) {
-                stage.close();
-                showSelectUserUI();
-            } else {
-                status.setText("Unauthorized");
-            }
-        });
-
-        VBox layout = new VBox(12,
-                new Label("Admin Authorization"),
-                adminId, adminPass, authBtn, status
-        );
-
-        layout.setAlignment(Pos.CENTER);
-        layout.setPadding(new Insets(20));
-
-        stage.setScene(new Scene(layout, 300, 250));
-        stage.show();
-    }
-
-    // ================= SELECT USER =================
-
-    private void showSelectUserUI() {
-        Stage stage = new Stage();
-
-        ComboBox<String> users = new ComboBox<>();
-        users.setPromptText("Select User ID");
-
-        try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("SELECT user_id FROM user");
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                users.getItems().add(rs.getString(1));
-            }
-        } catch (Exception ignored) {}
-
-        Button next = new Button("Next");
-
-        next.setOnAction(e -> {
-            if (users.getValue() != null) {
-                stage.close();
-                currentUserForPasswordChange = users.getValue(); // Track selected user
-                showSecretQuestionUI(users.getValue());
-            }
-        });
-
-        VBox layout = new VBox(12, new Label("Select User"), users, next);
-        layout.setAlignment(Pos.CENTER);
-        layout.setPadding(new Insets(20));
-
-        stage.setScene(new Scene(layout, 300, 220));
-        stage.show();
-    }
-
-    // ================= SECRET QUESTION =================
+    // ================= STEP 2: SECRET QUESTION =================
+    // No current-password field — only secret answer required.
 
     private void showSecretQuestionUI(String userId) {
         Stage stage = new Stage();
+        stage.setTitle("Verify Identity");
 
         Label heading = new Label("Verify Identity");
-        heading.setFont(Font.font("Arial", FontWeight.BOLD, 16));
+        heading.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+        heading.setTextFill(Color.web("#1F3A5F"));
 
-        PasswordField currentPass = new PasswordField();
-        currentPass.setPromptText("Enter current password");
+        Label userIdDisplay = new Label("User ID : " + userId);
+        userIdDisplay.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #34495E;");
 
         Label question = new Label("What is your senior secondary school name?");
         question.setWrapText(true);
+        question.setStyle("-fx-font-size: 14px; -fx-text-fill: #34495E;");
 
         TextField answer = new TextField();
         answer.setPromptText("Enter your answer");
+        answer.setPrefSize(280, 35);
+        answer.setStyle(
+                "-fx-background-radius: 6;" +
+                "-fx-border-radius: 6;" +
+                "-fx-border-color: #1E88E5;" +
+                "-fx-border-width: 2;" +
+                "-fx-background-color: white;" +
+                "-fx-text-fill: black;" +
+                "-fx-font-size: 14px;"
+        );
 
         Label status = new Label();
         status.setTextFill(Color.RED);
 
         Button verify = new Button("Verify");
+        verify.setPrefSize(120, 38);
+        verify.setStyle(
+                "-fx-background-color: #8B5E34;" +
+                "-fx-text-fill: white;" +
+                "-fx-font-size: 14px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-background-radius: 8;" +
+                "-fx-border-radius: 8;"
+        );
 
         verify.setOnAction(e -> {
-            if (!authenticate(userId, currentPass.getText().trim())) {
-                status.setText("Wrong current password");
-                return;
-            }
-
             if (verifySecretAnswer(userId, answer.getText().trim())) {
                 stage.close();
                 showChangePasswordUI();
             } else {
-                status.setText("Wrong secret answer");
+                status.setText("Wrong answer. Please try again.");
             }
         });
 
-        VBox layout = new VBox(14,
-                heading,
-                currentPass,
-                question,
-                answer,
-                verify,
-                status
-        );
-
+        VBox layout = new VBox(14, heading, userIdDisplay, question, answer, verify, status);
         layout.setAlignment(Pos.CENTER);
-        layout.setPadding(new Insets(20));
+        layout.setPadding(new Insets(28));
+        layout.setStyle("-fx-background-color: rgba(245,222,179,0.97); -fx-background-radius: 8;");
 
-        stage.setScene(new Scene(layout, 420, 300));
+        stage.setScene(new Scene(layout, 420, 310));
+        stage.setResizable(false);
         stage.show();
     }
 
@@ -410,60 +413,98 @@ loginBtn.setOnMouseReleased(e ->
         }
     }
 
-    // ================= PASSWORD CHANGE =================
+    // ================= STEP 3: SET NEW PASSWORD =================
 
     private void showChangePasswordUI() {
         Stage stage = new Stage();
+        stage.setTitle("Set New Password");
+
+        Label heading = new Label("Set New Password");
+        heading.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+        heading.setTextFill(Color.web("#1F3A5F"));
+
+        Label userIdDisplay = new Label("User ID : " + currentUserForPasswordChange);
+        userIdDisplay.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #34495E;");
 
         PasswordField newPass = new PasswordField();
-        newPass.setPromptText("New system password");
+        newPass.setPromptText("New Password");
+        newPass.setPrefSize(280, 35);
+        newPass.setStyle(
+                "-fx-background-radius: 6;" +
+                "-fx-border-radius: 6;" +
+                "-fx-border-color: #1E88E5;" +
+                "-fx-border-width: 2;" +
+                "-fx-background-color: white;" +
+                "-fx-text-fill: black;" +
+                "-fx-font-size: 14px;"
+        );
 
         PasswordField confirm = new PasswordField();
-        confirm.setPromptText("Confirm new password");
+        confirm.setPromptText("Confirm New Password");
+        confirm.setPrefSize(280, 35);
+        confirm.setStyle(
+                "-fx-background-radius: 6;" +
+                "-fx-border-radius: 6;" +
+                "-fx-border-color: #b0b0b0;" +
+                "-fx-border-width: 1.5;" +
+                "-fx-background-color: white;" +
+                "-fx-text-fill: black;" +
+                "-fx-font-size: 14px;"
+        );
 
         Label status = new Label();
+        status.setTextFill(Color.RED);
 
-        Label warningLabel = new Label();
-        warningLabel.setTextFill(Color.DARKRED);
-        warningLabel.setStyle("-fx-font-weight: bold;");
+        Label successLabel = new Label();
+        successLabel.setTextFill(Color.web("#1B5E20"));
+        successLabel.setStyle("-fx-font-weight: bold;");
 
         Button change = new Button("Update Password");
+        change.setPrefSize(160, 40);
+        change.setStyle(
+                "-fx-background-color: #8B5E34;" +
+                "-fx-text-fill: white;" +
+                "-fx-font-size: 14px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-background-radius: 8;" +
+                "-fx-border-radius: 8;"
+        );
 
         change.setOnAction(e -> {
+            if (newPass.getText().isEmpty()) {
+                status.setText("Password cannot be empty.");
+                return;
+            }
             if (!newPass.getText().equals(confirm.getText())) {
-                status.setText("Passwords do not match");
+                status.setText("Passwords do not match.");
                 return;
             }
 
             String sql = "UPDATE user SET password=? WHERE user_id=?";
-
             try (Connection con = DBConnection.getConnection();
                  PreparedStatement ps = con.prepareStatement(sql)) {
 
                 ps.setString(1, newPass.getText().trim());
-                ps.setString(2, currentUserForPasswordChange); // Only current user
+                ps.setString(2, currentUserForPasswordChange);
                 ps.executeUpdate();
 
-                warningLabel.setText("Password has been changed successfully for " + currentUserForPasswordChange);
+                successLabel.setText("Password updated for " + currentUserForPasswordChange);
                 status.setText("");
+                change.setDisable(true); // prevent double-submit
 
             } catch (Exception ex) {
-                status.setText("Error updating password");
+                status.setText("Error updating password.");
+                ex.printStackTrace();
             }
         });
 
-        VBox layout = new VBox(12,
-                new Label("Applies only to the selected user"),
-                newPass, confirm,
-                change,
-                warningLabel,
-                status
-        );
-
+        VBox layout = new VBox(14, heading, userIdDisplay, newPass, confirm, change, successLabel, status);
         layout.setAlignment(Pos.CENTER);
-        layout.setPadding(new Insets(20));
+        layout.setPadding(new Insets(28));
+        layout.setStyle("-fx-background-color: rgba(245,222,179,0.97); -fx-background-radius: 8;");
 
-        stage.setScene(new Scene(layout, 370, 320));
+        stage.setScene(new Scene(layout, 380, 360));
+        stage.setResizable(false);
         stage.show();
     }
 }
