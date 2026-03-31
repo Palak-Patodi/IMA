@@ -19,10 +19,13 @@ public class AddInventoryUI {
 
     private final Scene scene;
 
+    // Field-level reference so reloadOrderDropdown() can be called publicly
+    private final ComboBox<String> orderNo = new ComboBox<>();
+
     public AddInventoryUI(Inventory app) {
 
         GridPane grid = new GridPane();
-        Label formTitle = new Label("ADD INVENTORY FORM");
+        Label formTitle = new Label("BILL RECEIVED DETAILS");
         formTitle.setFont(Font.font("Arial", FontWeight.EXTRA_BOLD, 26));
         formTitle.setStyle("-fx-text-fill: #3E2723;");
 
@@ -31,15 +34,10 @@ public class AddInventoryUI {
         grid.setVgap(18);
         grid.setStyle("-fx-background-color: #E2C49F;");
 
-        ColumnConstraints col1 = new ColumnConstraints();
-        col1.setPrefWidth(220);
-        ColumnConstraints col2 = new ColumnConstraints();
-        col2.setPrefWidth(300);
-        ColumnConstraints col3 = new ColumnConstraints();
-        col3.setPrefWidth(220);
-        ColumnConstraints col4 = new ColumnConstraints();
-        col4.setPrefWidth(300);
-
+        ColumnConstraints col1 = new ColumnConstraints(); col1.setPrefWidth(220);
+        ColumnConstraints col2 = new ColumnConstraints(); col2.setPrefWidth(300);
+        ColumnConstraints col3 = new ColumnConstraints(); col3.setPrefWidth(220);
+        ColumnConstraints col4 = new ColumnConstraints(); col4.setPrefWidth(300);
         grid.getColumnConstraints().addAll(col1, col2, col3, col4);
 
         Font labelFont = Font.font("Arial", FontWeight.BOLD, 16);
@@ -57,10 +55,11 @@ public class AddInventoryUI {
         Label orderNoLbl = new Label("Order No");
         orderNoLbl.setFont(labelFont);
 
-        ComboBox<String> orderNo = new ComboBox<>();
-        setupComboBox(orderNo,
-                "SELECT order_no FROM order_table WHERE order_status='IN_PROCESS'",
-                fieldStyle);
+        orderNo.setEditable(false);
+        orderNo.setPrefSize(320, 42);
+        orderNo.setStyle(fieldStyle);
+        orderNo.setOnMouseEntered(e -> orderNo.setStyle(fieldStyle + "-fx-border-color: #8B5E34;"));
+        orderNo.setOnMouseExited(e  -> orderNo.setStyle(fieldStyle));
 
         Label billLbl = new Label("Bill No");
         billLbl.setFont(labelFont);
@@ -76,11 +75,8 @@ public class AddInventoryUI {
         billNo.setPrefSize(320, 42);
         billNo.setStyle(fieldStyle);
 
-        grid.add(orderNoLbl, 0, 0);
-        grid.add(orderNo, 1, 0);
-        
-        grid.add(billLbl, 0, 1);
-        grid.add(billNo, 1, 1);
+        grid.add(orderNoLbl, 0, 0); grid.add(orderNo,    1, 0);
+        grid.add(billLbl,    0, 1); grid.add(billNo,     1, 1);
 
         // ---------------- RIGHT SIDE ----------------
         Label dateLbl = new Label("Received Date");
@@ -97,15 +93,9 @@ public class AddInventoryUI {
         qtyReceived.setPrefSize(320, 42);
         qtyReceived.setStyle(fieldStyle);
 
-        grid.add(amountLbl, 2, 0);
-        grid.add(billAmount, 3, 0);
-
-        grid.add(dateLbl, 2, 1);
-        grid.add(orderDate, 3, 1);
-
-        grid.add(qtyLbl, 2, 2);
-        grid.add(qtyReceived, 3, 2);
-
+        grid.add(amountLbl,  2, 0); grid.add(billAmount, 3, 0);
+        grid.add(dateLbl,    2, 1); grid.add(orderDate,  3, 1);
+        grid.add(qtyLbl,     2, 2); grid.add(qtyReceived,3, 2);
 
         // ---------------- BUTTONS ----------------
         Button save = new Button("SAVE");
@@ -120,10 +110,8 @@ public class AddInventoryUI {
             -fx-padding: 12 35 12 35;
         """;
 
-        save.setStyle(buttonStyle);
-        back.setStyle(buttonStyle);
-        save.setPrefSize(180, 50);
-        back.setPrefSize(180, 50);
+        save.setStyle(buttonStyle); save.setPrefSize(180, 50);
+        back.setStyle(buttonStyle); back.setPrefSize(180, 50);
 
         back.setOnAction(e -> app.showDashboard());
 
@@ -137,69 +125,133 @@ public class AddInventoryUI {
             try (Connection con = DriverManager.getConnection(
                     "jdbc:mysql://localhost:3306/inventory_system",
                     "root",
-                    "Somya@2005")) {
+                    ""))  {
 
-                if (orderNo.getValue() == null)
+                // --- Validation ---
+                if (orderNo.getValue() == null || orderNo.getValue().trim().isEmpty())
                     throw new Exception("Select Order No");
-
-                if (billNo.getText().isEmpty())
+                if (billNo.getText().trim().isEmpty())
                     throw new Exception("Enter Bill No");
-
-                if (billAmount.getText().isEmpty())
+                if (billAmount.getText().trim().isEmpty())
                     throw new Exception("Enter Bill Amount");
-
-                if (qtyReceived.getText().isEmpty())
+                if (qtyReceived.getText().trim().isEmpty())
                     throw new Exception("Enter Quantity Received");
 
+                int qty = Integer.parseInt(qtyReceived.getText().trim());
+                if (qty <= 0)
+                    throw new Exception("Quantity must be greater than 0");
                 if (orderDate.getValue() == null)
                     throw new Exception("Select Received Date");
 
-                // 1️⃣ Get entry_id, pid, sid from order_table
-                // 1️⃣ Get entry_id, pid, sid from order_table
+                // --- Get order details ---
                 PreparedStatement getOrder = con.prepareStatement(
-                        "SELECT entry_id, pid, sid FROM order_table WHERE order_no=?");
-
-                getOrder.setString(1, orderNo.getValue());   // 👈 ADD IT HERE
-
+                    "SELECT entry_id, pid, sid, qty_ordered, order_status " +
+                    "FROM order_table " +
+                    "WHERE order_no = ? AND record_status = 'ACTIVE' LIMIT 1");
+                getOrder.setString(1, orderNo.getValue().trim());
                 ResultSet rs = getOrder.executeQuery();
-                if (!rs.next()) {
+                if (!rs.next())
                     throw new Exception("Order not found!");
+
+                String orderStatus = rs.getString("order_status");
+                if ("PAID".equals(orderStatus))
+                    throw new Exception("Order '" + orderNo.getValue() +
+                            "' is already PAID. Cannot add more bills.");
+
+                int    entryId    = rs.getInt("entry_id");
+                String pid        = rs.getString("pid");
+                int    sid        = rs.getInt("sid");
+                int    qtyOrdered = rs.getInt("qty_ordered");
+
+                // ✅ UPPER LIMIT CHECK
+                // How much has already been received for this order?
+                PreparedStatement calcAlready = con.prepareStatement(
+                    "SELECT IFNULL(SUM(qty_received), 0) AS already_received " +
+                    "FROM bill_invoice " +
+                    "WHERE entry_id = ? AND record_status = 'ACTIVE'");
+                calcAlready.setInt(1, entryId);
+                ResultSet rsAlready = calcAlready.executeQuery();
+                rsAlready.next();
+                int alreadyReceived = rsAlready.getInt("already_received");
+                int qtyRemaining    = qtyOrdered - alreadyReceived;
+
+                if (qty > qtyRemaining) {
+                    throw new Exception(
+                        "Quantity exceeds remaining order limit!\n" +
+                        "  Order Qty    : " + qtyOrdered + "\n" +
+                        "  Already Rcvd : " + alreadyReceived + "\n" +
+                        "  Remaining    : " + qtyRemaining + "\n" +
+                        "  You Entered  : " + qty
+                    );
                 }
 
+                // --- Free up bill_no if a soft-deleted record holds it ---
+                PreparedStatement freeBillNo = con.prepareStatement(
+                    "UPDATE bill_invoice " +
+                    "SET bill_no = CONCAT('DELETED_', bill_id, '_', bill_no) " +
+                    "WHERE bill_no = ? AND record_status = 'INACTIVE'");
+                freeBillNo.setString(1, billNo.getText().trim());
+                freeBillNo.executeUpdate();
 
-                int entryId = rs.getInt("entry_id");
-                String pid = rs.getString("pid");
-                int sid = rs.getInt("sid");
-
-
-                // 2️⃣ Insert into bill_invoice
+                // --- Insert bill ---
                 PreparedStatement insertBill = con.prepareStatement(
-                        "INSERT INTO bill_invoice " +
-                                "(bill_no, bill_received_by, bill_amount, " +
-                                "pid, sid, entry_id, qty_received, received_date, bill_status, record_status) " +
-                                "VALUES (?,?,?,?,?,?,?,?,'INCOMPLETE','ACTIVE')");
-
-                insertBill.setString(1, billNo.getText());
-                insertBill.setString(2, "Inventory Manager");
-                insertBill.setDouble(3, Double.parseDouble(billAmount.getText()));
-                insertBill.setString(4, pid);
-                insertBill.setInt(5, sid);
-                insertBill.setInt(6, entryId);
-                insertBill.setInt(7, Integer.parseInt(qtyReceived.getText()));
-                insertBill.setDate(8, java.sql.Date.valueOf(orderDate.getValue()));
-
+                    "INSERT INTO bill_invoice " +
+                    "(bill_no, bill_received_by, bill_amount, " +
+                    " pid, sid, entry_id, qty_received, received_date, " +
+                    " bill_status, record_status) " +
+                    "VALUES (?, 'Inventory Manager', ?, ?, ?, ?, ?, ?, 'INCOMPLETE', 'ACTIVE')");
+                insertBill.setString(1, billNo.getText().trim());
+                insertBill.setDouble(2, Double.parseDouble(billAmount.getText().trim()));
+                insertBill.setString(3, pid);
+                insertBill.setInt(4, sid);
+                insertBill.setInt(5, entryId);
+                insertBill.setInt(6, qty);
+                insertBill.setDate(7, java.sql.Date.valueOf(orderDate.getValue()));
                 insertBill.executeUpdate();
 
-                new Alert(Alert.AlertType.INFORMATION,
-                        "Bill added successfully").show();
+                // --- Update product stock ---
+                PreparedStatement updateStock = con.prepareStatement(
+                    "UPDATE product SET qty_in_stock = qty_in_stock + ? WHERE pid = ?");
+                updateStock.setInt(1, qty);
+                updateStock.setString(2, pid);
+                updateStock.executeUpdate();
+
+                // --- Calculate total received now (Java-side, no subquery conflict) ---
+                int totalReceived   = alreadyReceived + qty;
+                String newBillStatus  = (totalReceived >= qtyOrdered) ? "COMPLETE"   : "INCOMPLETE";
+                String newOrderStatus = (totalReceived >= qtyOrdered) ? "PAID"       : "IN_PROCESS";
+
+                // --- Plain UPDATE bill_status ---
+                PreparedStatement updateBillStatus = con.prepareStatement(
+                    "UPDATE bill_invoice SET bill_status = ? " +
+                    "WHERE entry_id = ? AND record_status = 'ACTIVE'");
+                updateBillStatus.setString(1, newBillStatus);
+                updateBillStatus.setInt(2, entryId);
+                updateBillStatus.executeUpdate();
+
+                // --- Plain UPDATE order_status ---
+                PreparedStatement updateOrderStatus = con.prepareStatement(
+                    "UPDATE order_table SET order_status = ? WHERE entry_id = ?");
+                updateOrderStatus.setString(1, newOrderStatus);
+                updateOrderStatus.setInt(2, entryId);
+                updateOrderStatus.executeUpdate();
+
+                new Alert(Alert.AlertType.INFORMATION, "Bill added successfully").show();
+
+                // Reset form; reload dropdown (PAID orders disappear automatically)
+                reloadOrderDropdown();
+                orderNo.setValue(null);
+                billNo.clear();
+                billAmount.clear();
+                qtyReceived.clear();
+                orderDate.setValue(null);
 
             } catch (Exception ex) {
                 new Alert(Alert.AlertType.ERROR, ex.getMessage()).show();
             }
         });
 
-
-
+        // ---------------- LAYOUT ----------------
         VBox root = new VBox();
         root.setPadding(new Insets(50));
         root.setSpacing(35);
@@ -219,45 +271,42 @@ public class AddInventoryUI {
 
         root.getChildren().add(card);
         scene = new Scene(root, 1024, 768);
+
+        // Load dropdown immediately on first construction
+        reloadOrderDropdown();
+    }
+
+    // =====================================================================
+    //  PUBLIC — call this in Inventory.java before setScene() so the
+    //  dropdown is always fresh when the user navigates here.
+    //  e.g.:
+    //    addInventoryUI.reloadOrderDropdown();
+    //    primaryStage.setScene(addInventoryUI.getScene());
+    // =====================================================================
+    public void reloadOrderDropdown() {
+        orderNo.getItems().clear();
+        orderNo.setValue(null);
+        String query =
+            "SELECT order_no FROM order_table " +
+            "WHERE order_status = 'IN_PROCESS' AND record_status = 'ACTIVE' " +
+            "GROUP BY order_no " +
+            "ORDER BY order_no";
+        try (Connection con = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/inventory_system",
+                "root",
+                "");  //password
+             PreparedStatement ps = con.prepareStatement(query);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                orderNo.getItems().add(rs.getString(1));
+            }
+        } catch (Exception e) {
+            new Alert(Alert.AlertType.ERROR,
+                    "Failed to load orders:\n" + e.getMessage()).show();
+        }
     }
 
     public Scene getScene() {
         return scene;
-    }
-
-    private void loadData(ComboBox<String> combo, String query) {
-        try (Connection con = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/inventory_system",
-                "root",
-                "Somya@2005");
-             PreparedStatement ps = con.prepareStatement(query);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                combo.getItems().add(rs.getString(1));
-            }
-        } catch (Exception e) {
-        }
-    }
-
-    private void setupComboBox(ComboBox<String> combo, String query, String fieldStyle) {
-
-        combo.setEditable(true);
-        combo.setPrefSize(320, 42);
-        combo.setStyle(fieldStyle);
-
-        loadData(combo, query);
-
-        combo.setOnMouseEntered(e ->
-                combo.setStyle(fieldStyle + "-fx-border-color: #8B5E34;")
-        );
-
-        combo.setOnMouseExited(e ->
-                combo.setStyle(fieldStyle)
-        );
-
-        combo.getEditor().textProperty().addListener((obs, oldVal, newVal) -> {
-            combo.show();
-        });
     }
 }
