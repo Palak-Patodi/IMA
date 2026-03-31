@@ -34,7 +34,7 @@ public class ReportUI {
     private final String[] categories = {
         "Furniture",
         "Stationery",
-        "Computer",
+        "Computer sets",
         "Miscellaneous"
     };
 
@@ -100,7 +100,7 @@ pending.setText("Pending Stock: " + (p - i + r));
 */
 HBox charts = new HBox(60,
     createBarChart(data),
-    createCategoryPie()
+    createCategoryPie(data)
 );
 charts.setAlignment(Pos.CENTER);
 charts.setPadding(new Insets(20, 0, 0, 0));
@@ -130,12 +130,14 @@ stage.setScene(new Scene(root, 900, 700));
             start = end.minusYears(1);
     }
     return new LocalDate[]{start, end};
-}*/private LocalDate[] getDateRange(String period) {
+}*/
+   private LocalDate[] getDateRange(String period) {
     return new LocalDate[]{
-        LocalDate.of(2024, 1, 1),
-        LocalDate.of(2026, 12, 31)
+        LocalDate.of(2025, 1, 1),
+        LocalDate.of(2025, 12, 31)
     };
-}
+} 
+
 
 private int getSum(Connection con, String sql, String category, LocalDate[] range) throws Exception {
     PreparedStatement ps = con.prepareStatement(sql);
@@ -156,12 +158,12 @@ private Map<String, model.ReportData> loadReport(String period) {
 
          rd.purchase = getSum(con,
     """
-    SELECT COALESCE(SUM(b.qty_ordered),0)
+    SELECT COALESCE(SUM(b.qty_received),0)
     FROM bill_invoice b
     JOIN product p ON b.pid = p.pid
     JOIN product_type pt ON p.ptype_id = pt.ptype_id
     WHERE pt.ptype_name = ?
-    AND b.date BETWEEN ? AND ?
+    AND b.received_date BETWEEN ? AND ?
     """,
     cat, range
 );
@@ -306,7 +308,7 @@ chart.setBarGap(10);
     return chart;
 }
 
-private VBox createCategoryPie() {
+ private VBox createCategoryPie(Map<String, model.ReportData> data){
 
     PieChart pie = new PieChart();
     pie.setTitle("Stock by Category");
@@ -319,12 +321,10 @@ private VBox createCategoryPie() {
     Map<String, String> colorMap = Map.of(
         "Stationery", "#3498db",
         "Furniture", "#f39c12",
-        "Computer", "#e74c3c",
+        "Computer sets", "#e74c3c",
         "Miscellaneous", "#2ecc71"
     );
-
-    int totalStock = 0;
-
+int totalStock = 0;
     try (Connection con = db.DBConnection.getConnection()) {
 
         String sql = """
@@ -345,11 +345,15 @@ private VBox createCategoryPie() {
                 name = "Miscellaneous";
             }
 
-            totalStock += value;
-
-            PieChart.Data data = new PieChart.Data(name, value);
-            pie.getData().add(data);
+          PieChart.Data slice = new PieChart.Data(name, value);
+pie.getData().add(slice);
         }
+       
+
+
+for (model.ReportData d : data.values()) {
+    totalStock += (d.purchase - d.issued + d.returned);
+}
 
     } catch (Exception e) {
         e.printStackTrace();
@@ -383,12 +387,14 @@ centerLabel.setStyle(
     "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0.3, 0, 2);"
 );
 
+// -------- DONUT EFFECT (UPDATED) --------
+
 
 // Custom legend
 VBox legend = new VBox(10,
     createLegendItem("#3498db", "Stationery"),
     createLegendItem("#f39c12", "Furniture"),
-    createLegendItem("#e74c3c", "Computer"),
+    createLegendItem("#e74c3c", "Computer sets"),
     createLegendItem("#2ecc71", "Miscellaneous")
 );
 legend.setAlignment(Pos.CENTER_LEFT);
@@ -401,7 +407,6 @@ hole.setStyle("-fx-fill: #f4f6f9;");
 
 donut.getChildren().addAll(pie, hole, centerLabel);
 donut.setPadding(new Insets(10));
-
 // Container
 VBox container = new VBox(15, donut, legend);
 container.setAlignment(Pos.CENTER);
