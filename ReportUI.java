@@ -1,3 +1,4 @@
+
 package ui;
 
 import javafx.geometry.Insets;
@@ -89,7 +90,7 @@ public class ReportUI {
             i    += d.issued;
             rInv += d.returnToInventory;
             rSup += d.returnToSupplier;
-            pendingTotal += (d.issued - d.returnToInventory);
+            pendingTotal += Math.max(0, d.issued - d.returnToInventory);
         }
 
         purchase.setText(String.valueOf(p));
@@ -278,58 +279,74 @@ public class ReportUI {
 
     private BarChart<String, Number> createBarChart(Map<String, model.ReportData> data) {
 
-        CategoryAxis xAxis = new CategoryAxis();
-        xAxis.setLabel("Type");
+    CategoryAxis xAxis = new CategoryAxis();
+    xAxis.setLabel("Type");
 
-        NumberAxis yAxis = new NumberAxis();
-        yAxis.setLabel("Quantity");
-        yAxis.setForceZeroInRange(true);
+    NumberAxis yAxis = new NumberAxis();
+    yAxis.setLabel("Quantity");
+    yAxis.setForceZeroInRange(true);
 
-        BarChart<String, Number> chart = new BarChart<>(xAxis, yAxis);
-        chart.setTitle("Inventory Movement");
-        chart.setPrefHeight(320);
-        chart.setHorizontalGridLinesVisible(true);
-        chart.setVerticalGridLinesVisible(false);
-        chart.setStyle(
-            "-fx-background-color: white;" +
-            "-fx-background-radius: 18;" +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 18, 0.3, 0, 6);"
-        );
+    BarChart<String, Number> chart = new BarChart<>(xAxis, yAxis);
+    chart.setTitle("Inventory Movement");
+    chart.setPrefHeight(320);
+    chart.setHorizontalGridLinesVisible(true);
+    chart.setVerticalGridLinesVisible(false);
+    chart.setLegendVisible(false);   // <-- ADDED: removes the orange square at bottom
+    chart.setStyle(
+        "-fx-background-color: white;" +
+        "-fx-background-radius: 18;" +
+        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 18, 0.3, 0, 6);"
+    );
 
-        int totalPurchase = 0, totalIssued = 0, totalReturned = 0;
-        for (model.ReportData d : data.values()) {
-            totalPurchase += d.purchase;
-            totalIssued   += d.issued;
-            totalReturned += d.returnToInventory;   // only inventory returns in bar
-        }
-
-        XYChart.Series<String, Number> series = new XYChart.Series<>();
-        series.getData().add(new XYChart.Data<>("Purchase",         totalPurchase));
-        series.getData().add(new XYChart.Data<>("Issued",           totalIssued));
-        series.getData().add(new XYChart.Data<>("Return to Inv",    totalReturned));
-
-        chart.getData().add(series);
-
-        String[] barColors = {"#1abc9c", "#3498db", "#9b59b6"};
-        for (int idx = 0; idx < series.getData().size(); idx++) {
-            int i = idx;
-            series.getData().get(idx).nodeProperty().addListener((obs, oldNode, newNode) -> {
-                if (newNode != null) {
-                    newNode.setStyle(
-                        "-fx-background-radius: 14 14 0 0;" +
-                        "-fx-background-color: " + barColors[i] + ";"
-                    );
-                }
-            });
-        }
-
-        displayBarValues(series);
-        chart.setAnimated(true);
-        chart.setCategoryGap(40);
-        chart.setBarGap(10);
-
-        return chart;
+    int totalPurchase = 0, totalIssued = 0, totalReturned = 0;
+    for (model.ReportData d : data.values()) {
+        totalPurchase += d.purchase;
+        totalIssued   += d.issued;
+        totalReturned += d.returnToInventory;
     }
+
+    XYChart.Series<String, Number> series = new XYChart.Series<>();
+    series.getData().add(new XYChart.Data<>("Purchase",      totalPurchase));
+    series.getData().add(new XYChart.Data<>("Issued",        totalIssued));
+    series.getData().add(new XYChart.Data<>("Return to Inv", totalReturned));
+
+    chart.getData().add(series);
+
+    String[] barColors = {"#1abc9c", "#3498db", "#9b59b6"};
+
+    // ---- REPLACED BLOCK STARTS HERE ----
+    for (int idx = 0; idx < series.getData().size(); idx++) {
+        String color = barColors[idx];
+        series.getData().get(idx).nodeProperty().addListener((obs, oldNode, newNode) -> {
+            if (newNode != null) {
+                newNode.setStyle(
+                    "-fx-background-radius: 14 14 0 0;" +
+                    "-fx-background-color: " + color + ";"
+                );
+            }
+        });
+    }
+    javafx.application.Platform.runLater(() -> {
+        for (int idx = 0; idx < series.getData().size(); idx++) {
+            String color = barColors[idx];
+            javafx.scene.Node node = series.getData().get(idx).getNode();
+            if (node != null) {
+                node.setStyle(
+                    "-fx-background-radius: 14 14 0 0;" +
+                    "-fx-background-color: " + color + ";"
+                );
+            }
+        }
+    });
+    // ---- REPLACED BLOCK ENDS HERE ----
+
+    displayBarValues(series);
+    chart.setAnimated(true);
+    chart.setCategoryGap(40);
+    chart.setBarGap(10);
+
+    return chart;
+}
 
     private VBox createCategoryPie(Map<String, model.ReportData> data) {
 
@@ -375,15 +392,21 @@ public class ReportUI {
         );
     }
 
-    pie.getData().forEach(d -> {
+    for (PieChart.Data d : pie.getData()) {
+        String color = colorMap.getOrDefault(d.getName(), "#bdc3c7");
         d.nodeProperty().addListener((obs, oldNode, newNode) -> {
             if (newNode != null) {
-                newNode.setStyle(
-                    "-fx-pie-color: " +
-                    colorMap.getOrDefault(d.getName(), "#bdc3c7") + ";"
-                );
+                newNode.setStyle("-fx-pie-color: " + color + ";");
             }
         });
+    }
+    javafx.application.Platform.runLater(() -> {
+        for (PieChart.Data d : pie.getData()) {
+            String color = colorMap.getOrDefault(d.getName(), "#bdc3c7");
+            if (d.getNode() != null) {
+                d.getNode().setStyle("-fx-pie-color: " + color + ";");
+            }
+        }
     });
 
     Label centerLabel = new Label("TOTAL STOCK\n" + totalStock);
