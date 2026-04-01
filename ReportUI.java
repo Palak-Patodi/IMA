@@ -1,13 +1,15 @@
-
 package ui;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
+import javafx.scene.control.Button;
+import javafx.scene.control.Alert;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.stage.FileChooser;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -15,6 +17,8 @@ import java.sql.Date;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.io.File;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.CategoryAxis;
 import javafx.scene.chart.NumberAxis;
@@ -23,6 +27,8 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.layout.HBox;
 import javafx.geometry.Side;
 import javafx.scene.layout.StackPane;
+import javafx.embed.swing.SwingFXUtils;
+import javax.imageio.ImageIO;
 
 
 
@@ -62,7 +68,7 @@ public class ReportUI {
             createCard("Total Purchase", purchase, "#1abc9c"),
             createCard("Total Issued", issued, "#3498db"),
             createCard("Return to Inventory", returnInv, "#9b59b6"),
-            createCard("Sent to Supplier", returnSup, "#e74c3c"),   // label changed here only
+            createCard("Sent to Supplier", returnSup, "#e74c3c"),
             createCard("Pending Stock", pending, "#e67e22")
         );
         cards.setAlignment(Pos.CENTER);
@@ -70,7 +76,37 @@ public class ReportUI {
         dashboard = new VBox(20);
         dashboard.setAlignment(Pos.CENTER);
 
-        VBox root = new VBox(35, title, cards, dashboard);
+        // ── Save Button ──────────────────────────────────────────────────────
+        Button saveBtn = new Button("⬇ Save Report");
+        saveBtn.setStyle(
+            "-fx-background-color: #2c3e50;" +
+            "-fx-text-fill: white;" +
+            "-fx-font-size: 14px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-background-radius: 10;" +
+            "-fx-padding: 10 24 10 24;" +
+            "-fx-cursor: hand;"
+        );
+        saveBtn.setOnMouseEntered(e -> saveBtn.setStyle(
+            "-fx-background-color: #1a252f;" +
+            "-fx-text-fill: white;" +
+            "-fx-font-size: 14px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-background-radius: 10;" +
+            "-fx-padding: 10 24 10 24;" +
+            "-fx-cursor: hand;"
+        ));
+        saveBtn.setOnMouseExited(e -> saveBtn.setStyle(
+            "-fx-background-color: #2c3e50;" +
+            "-fx-text-fill: white;" +
+            "-fx-font-size: 14px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-background-radius: 10;" +
+            "-fx-padding: 10 24 10 24;" +
+            "-fx-cursor: hand;"
+        ));
+
+        VBox root = new VBox(35, title, cards, dashboard, saveBtn);
         root.setPadding(new Insets(40));
         root.setStyle(
             "-fx-background-color: linear-gradient(to bottom right, #f8f9fc, #eef1f7);"
@@ -78,6 +114,9 @@ public class ReportUI {
 
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(30));
+
+        // wire save button after root is created so snapshot captures everything
+        saveBtn.setOnAction(e -> handleSave(root));
 
         Map<String, model.ReportData> data = loadReport(period);
 
@@ -116,38 +155,34 @@ public class ReportUI {
     }
 
     private LocalDate[] getDateRange(String period) {
-    LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now();
 
-    switch (period) {
-        case "Weekly": {
-            // Start = most recent Sunday, End = coming Saturday (or today)
-            LocalDate start = today.with(java.time.DayOfWeek.SUNDAY);
-            // if today IS Sunday, start is today; otherwise go back to last Sunday
-            if (today.getDayOfWeek() != java.time.DayOfWeek.SUNDAY) {
-                start = today.with(java.time.temporal.TemporalAdjusters.previous(java.time.DayOfWeek.SUNDAY));
+        switch (period) {
+            case "Weekly": {
+                LocalDate start = today.with(java.time.DayOfWeek.SUNDAY);
+                if (today.getDayOfWeek() != java.time.DayOfWeek.SUNDAY) {
+                    start = today.with(java.time.temporal.TemporalAdjusters.previous(java.time.DayOfWeek.SUNDAY));
+                }
+                LocalDate end = start.plusDays(6);
+                return new LocalDate[]{start, end};
             }
-            LocalDate end = start.plusDays(6); // Saturday
-            return new LocalDate[]{start, end};
-        }
 
-        case "Monthly": {
-            // Start = 1st of current month, End = last day of current month
-            LocalDate start = today.withDayOfMonth(1);
-            LocalDate end = today.with(java.time.temporal.TemporalAdjusters.lastDayOfMonth());
-            return new LocalDate[]{start, end};
-        }
+            case "Monthly": {
+                LocalDate start = today.withDayOfMonth(1);
+                LocalDate end = today.with(java.time.temporal.TemporalAdjusters.lastDayOfMonth());
+                return new LocalDate[]{start, end};
+            }
 
-        case "Yearly": {
-            // Start = Jan 1, End = Dec 31 of current year
-            LocalDate start = LocalDate.of(today.getYear(), 1, 1);
-            LocalDate end = LocalDate.of(today.getYear(), 12, 31);
-            return new LocalDate[]{start, end};
-        }
+            case "Yearly": {
+                LocalDate start = LocalDate.of(today.getYear(), 1, 1);
+                LocalDate end = LocalDate.of(today.getYear(), 12, 31);
+                return new LocalDate[]{start, end};
+            }
 
-        default:
-            return new LocalDate[]{LocalDate.of(2020, 1, 1), today};
+            default:
+                return new LocalDate[]{LocalDate.of(2020, 1, 1), today};
+        }
     }
-}
 
     private int getSum(Connection con, String sql, String category, LocalDate[] range) throws Exception {
         PreparedStatement ps = con.prepareStatement(sql);
@@ -167,8 +202,6 @@ public class ReportUI {
             for (String cat : categories) {
                 model.ReportData rd = new model.ReportData();
 
-                // ── 1. Total Purchased ──────────────────────────────────────────────
-                // Sum qty_received from bill_invoice for products in this category
                 rd.purchase = getSum(con,
                     "SELECT COALESCE(SUM(b.qty_received), 0) " +
                     "FROM bill_invoice b " +
@@ -180,8 +213,6 @@ public class ReportUI {
                     "%" + cat + "%", range
                 );
 
-                // ── 2. Total Issued ─────────────────────────────────────────────────
-                // Sum qty_issued from issue table for products in this category
                 rd.issued = getSum(con,
                     "SELECT COALESCE(SUM(i.qty_issued), 0) " +
                     "FROM issue i " +
@@ -192,10 +223,6 @@ public class ReportUI {
                     "%" + cat + "%", range
                 );
 
-                // ── 3. Return to Inventory ──────────────────────────────────────────
-                // return_table  → all rows (items physically back in store)
-                // rts_table     → only where record_status = 'RECEIVED'
-                //                 (supplier sent the replacement / credit received)
                 rd.returnToInventory = getSum(con,
                     "SELECT COALESCE(SUM(x.quantity), 0) " +
                     "FROM ( " +
@@ -214,8 +241,6 @@ public class ReportUI {
                     "%" + cat + "%", range
                 );
 
-                // ── 4. Sent to Supplier (formerly Return to Supplier) ───────────────
-                // rts_table only where record_status = 'SENT'
                 rd.returnToSupplier = getSum(con,
                     "SELECT COALESCE(SUM(rts.quantity), 0) " +
                     "FROM rts_table rts " +
@@ -227,7 +252,6 @@ public class ReportUI {
                     "%" + cat + "%", range
                 );
 
-                // returnFromSupplier is not used in cards; keep zero
                 rd.returnFromSupplier = 0;
 
                 map.put(cat, rd);
@@ -279,158 +303,155 @@ public class ReportUI {
 
     private BarChart<String, Number> createBarChart(Map<String, model.ReportData> data) {
 
-    CategoryAxis xAxis = new CategoryAxis();
-    xAxis.setLabel("Type");
+        CategoryAxis xAxis = new CategoryAxis();
+        xAxis.setLabel("Type");
 
-    NumberAxis yAxis = new NumberAxis();
-    yAxis.setLabel("Quantity");
-    yAxis.setForceZeroInRange(true);
+        NumberAxis yAxis = new NumberAxis();
+        yAxis.setLabel("Quantity");
+        yAxis.setForceZeroInRange(true);
 
-    BarChart<String, Number> chart = new BarChart<>(xAxis, yAxis);
-    chart.setTitle("Inventory Movement");
-    chart.setPrefHeight(320);
-    chart.setHorizontalGridLinesVisible(true);
-    chart.setVerticalGridLinesVisible(false);
-    chart.setLegendVisible(false);   // <-- ADDED: removes the orange square at bottom
-    chart.setStyle(
-        "-fx-background-color: white;" +
-        "-fx-background-radius: 18;" +
-        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 18, 0.3, 0, 6);"
-    );
+        BarChart<String, Number> chart = new BarChart<>(xAxis, yAxis);
+        chart.setTitle("Inventory Movement");
+        chart.setPrefHeight(320);
+        chart.setHorizontalGridLinesVisible(true);
+        chart.setVerticalGridLinesVisible(false);
+        chart.setLegendVisible(false);
+        chart.setStyle(
+            "-fx-background-color: white;" +
+            "-fx-background-radius: 18;" +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 18, 0.3, 0, 6);"
+        );
 
-    int totalPurchase = 0, totalIssued = 0, totalReturned = 0;
-    for (model.ReportData d : data.values()) {
-        totalPurchase += d.purchase;
-        totalIssued   += d.issued;
-        totalReturned += d.returnToInventory;
-    }
+        int totalPurchase = 0, totalIssued = 0, totalReturned = 0;
+        for (model.ReportData d : data.values()) {
+            totalPurchase += d.purchase;
+            totalIssued   += d.issued;
+            totalReturned += d.returnToInventory;
+        }
 
-    XYChart.Series<String, Number> series = new XYChart.Series<>();
-    series.getData().add(new XYChart.Data<>("Purchase",      totalPurchase));
-    series.getData().add(new XYChart.Data<>("Issued",        totalIssued));
-    series.getData().add(new XYChart.Data<>("Return to Inv", totalReturned));
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        series.getData().add(new XYChart.Data<>("Purchase",      totalPurchase));
+        series.getData().add(new XYChart.Data<>("Issued",        totalIssued));
+        series.getData().add(new XYChart.Data<>("Return to Inv", totalReturned));
 
-    chart.getData().add(series);
+        chart.getData().add(series);
 
-    String[] barColors = {"#1abc9c", "#3498db", "#9b59b6"};
+        String[] barColors = {"#1abc9c", "#3498db", "#9b59b6"};
 
-    // ---- REPLACED BLOCK STARTS HERE ----
-    for (int idx = 0; idx < series.getData().size(); idx++) {
-        String color = barColors[idx];
-        series.getData().get(idx).nodeProperty().addListener((obs, oldNode, newNode) -> {
-            if (newNode != null) {
-                newNode.setStyle(
-                    "-fx-background-radius: 14 14 0 0;" +
-                    "-fx-background-color: " + color + ";"
-                );
-            }
-        });
-    }
-    javafx.application.Platform.runLater(() -> {
         for (int idx = 0; idx < series.getData().size(); idx++) {
             String color = barColors[idx];
-            javafx.scene.Node node = series.getData().get(idx).getNode();
-            if (node != null) {
-                node.setStyle(
-                    "-fx-background-radius: 14 14 0 0;" +
-                    "-fx-background-color: " + color + ";"
-                );
-            }
+            series.getData().get(idx).nodeProperty().addListener((obs, oldNode, newNode) -> {
+                if (newNode != null) {
+                    newNode.setStyle(
+                        "-fx-background-radius: 14 14 0 0;" +
+                        "-fx-background-color: " + color + ";"
+                    );
+                }
+            });
         }
-    });
-    // ---- REPLACED BLOCK ENDS HERE ----
+        javafx.application.Platform.runLater(() -> {
+            for (int idx = 0; idx < series.getData().size(); idx++) {
+                String color = barColors[idx];
+                javafx.scene.Node node = series.getData().get(idx).getNode();
+                if (node != null) {
+                    node.setStyle(
+                        "-fx-background-radius: 14 14 0 0;" +
+                        "-fx-background-color: " + color + ";"
+                    );
+                }
+            }
+        });
 
-    displayBarValues(series);
-    chart.setAnimated(true);
-    chart.setCategoryGap(40);
-    chart.setBarGap(10);
+        displayBarValues(series);
+        chart.setAnimated(true);
+        chart.setCategoryGap(40);
+        chart.setBarGap(10);
 
-    return chart;
-}
+        return chart;
+    }
 
     private VBox createCategoryPie(Map<String, model.ReportData> data) {
 
-    PieChart pie = new PieChart();
-    pie.setTitle("Stock by Category");
-    pie.setLegendVisible(false);
-    pie.setLabelsVisible(false);
-    pie.setPrefSize(320, 320);
+        PieChart pie = new PieChart();
+        pie.setTitle("Stock by Category");
+        pie.setLegendVisible(false);
+        pie.setLabelsVisible(false);
+        pie.setPrefSize(320, 320);
 
-    Map<String, String> colorMap = Map.of(
-        "Stationery",    "#3498db",
-        "Furniture",     "#f39c12",
-        "Computer sets", "#e74c3c",
-        "Miscellaneous", "#2ecc71"
-    );
-
-    int totalStock = 0;
-    VBox legend = new VBox(10);
-    legend.setAlignment(Pos.CENTER_LEFT);
-
-    for (Map.Entry<String, model.ReportData> entry : data.entrySet()) {
-        String name = entry.getKey();
-        model.ReportData d = entry.getValue();
-
-        int stock = d.purchase
-                  - d.issued
-                  + d.returnToInventory
-                  - d.returnToSupplier;
-
-        if (stock <= 0) continue;  // ✅ skip categories with no activity
-
-        totalStock += stock;
-
-        PieChart.Data slice = new PieChart.Data(name, stock);
-        pie.getData().add(slice);
-
-        // ✅ only add to legend if it has data
-        legend.getChildren().add(
-            createLegendItem(
-                colorMap.getOrDefault(name, "#bdc3c7"),
-                name
-            )
+        Map<String, String> colorMap = Map.of(
+            "Stationery",    "#3498db",
+            "Furniture",     "#f39c12",
+            "Computer sets", "#e74c3c",
+            "Miscellaneous", "#2ecc71"
         );
-    }
 
-    for (PieChart.Data d : pie.getData()) {
-        String color = colorMap.getOrDefault(d.getName(), "#bdc3c7");
-        d.nodeProperty().addListener((obs, oldNode, newNode) -> {
-            if (newNode != null) {
-                newNode.setStyle("-fx-pie-color: " + color + ";");
-            }
-        });
-    }
-    javafx.application.Platform.runLater(() -> {
+        int totalStock = 0;
+        VBox legend = new VBox(10);
+        legend.setAlignment(Pos.CENTER_LEFT);
+
+        for (Map.Entry<String, model.ReportData> entry : data.entrySet()) {
+            String name = entry.getKey();
+            model.ReportData d = entry.getValue();
+
+            int stock = d.purchase
+                      - d.issued
+                      + d.returnToInventory
+                      - d.returnToSupplier;
+
+            if (stock <= 0) continue;
+
+            totalStock += stock;
+
+            PieChart.Data slice = new PieChart.Data(name, stock);
+            pie.getData().add(slice);
+
+            legend.getChildren().add(
+                createLegendItem(
+                    colorMap.getOrDefault(name, "#bdc3c7"),
+                    name
+                )
+            );
+        }
+
         for (PieChart.Data d : pie.getData()) {
             String color = colorMap.getOrDefault(d.getName(), "#bdc3c7");
-            if (d.getNode() != null) {
-                d.getNode().setStyle("-fx-pie-color: " + color + ";");
-            }
+            d.nodeProperty().addListener((obs, oldNode, newNode) -> {
+                if (newNode != null) {
+                    newNode.setStyle("-fx-pie-color: " + color + ";");
+                }
+            });
         }
-    });
+        javafx.application.Platform.runLater(() -> {
+            for (PieChart.Data d : pie.getData()) {
+                String color = colorMap.getOrDefault(d.getName(), "#bdc3c7");
+                if (d.getNode() != null) {
+                    d.getNode().setStyle("-fx-pie-color: " + color + ";");
+                }
+            }
+        });
 
-    Label centerLabel = new Label("TOTAL STOCK\n" + totalStock);
-    centerLabel.setAlignment(Pos.CENTER);
-    centerLabel.setStyle(
-        "-fx-font-size: 16px;" +
-        "-fx-font-weight: bold;" +
-        "-fx-text-fill: #34495e;" +
-        "-fx-background-color: white;" +
-        "-fx-background-radius: 50;" +
-        "-fx-padding: 12 18 12 18;" +
-        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0.3, 0, 2);"
-    );
+        Label centerLabel = new Label("TOTAL STOCK\n" + totalStock);
+        centerLabel.setAlignment(Pos.CENTER);
+        centerLabel.setStyle(
+            "-fx-font-size: 16px;" +
+            "-fx-font-weight: bold;" +
+            "-fx-text-fill: #34495e;" +
+            "-fx-background-color: white;" +
+            "-fx-background-radius: 50;" +
+            "-fx-padding: 12 18 12 18;" +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0.3, 0, 2);"
+        );
 
-    StackPane donut = new StackPane();
-    javafx.scene.shape.Circle hole = new javafx.scene.shape.Circle(85);
-    hole.setStyle("-fx-fill: #f4f6f9;");
-    donut.getChildren().addAll(pie, hole, centerLabel);
-    donut.setPadding(new Insets(10));
+        StackPane donut = new StackPane();
+        javafx.scene.shape.Circle hole = new javafx.scene.shape.Circle(85);
+        hole.setStyle("-fx-fill: #f4f6f9;");
+        donut.getChildren().addAll(pie, hole, centerLabel);
+        donut.setPadding(new Insets(10));
 
-    VBox container = new VBox(15, donut, legend);
-    container.setAlignment(Pos.CENTER);
-    return container;
-}
+        VBox container = new VBox(15, donut, legend);
+        container.setAlignment(Pos.CENTER);
+        return container;
+    }
 
     private HBox createLegendItem(String color, String text) {
         Label dot = new Label();
@@ -464,5 +485,157 @@ public class ReportUI {
                 }
             });
         }
+    }
+
+    // ── Save Feature ─────────────────────────────────────────────────────────
+
+    private void handleSave(VBox root) {
+    FileChooser chooser = new FileChooser();
+    chooser.setTitle("Save Report As");
+    chooser.setInitialFileName("inventory_report");
+    chooser.getExtensionFilters().add(
+        new FileChooser.ExtensionFilter("JPG Image", "*.jpg")
+    );
+    File file = chooser.showSaveDialog(stage);
+    if (file != null) saveAsJpg(root, file);
+}
+
+    private void saveAsJpg(VBox root, File file) {
+        try {
+            javafx.scene.image.WritableImage image = root.snapshot(
+                new javafx.scene.SnapshotParameters(), null
+            );
+            java.awt.image.BufferedImage buffered = SwingFXUtils.fromFXImage(image, null);
+
+            // Convert to pure RGB — JPG does not support alpha channel
+            java.awt.image.BufferedImage rgb = new java.awt.image.BufferedImage(
+                buffered.getWidth(), buffered.getHeight(),
+                java.awt.image.BufferedImage.TYPE_INT_RGB
+            );
+            java.awt.Graphics2D g = rgb.createGraphics();
+            g.drawImage(buffered, 0, 0, java.awt.Color.WHITE, null);
+            g.dispose();
+
+            ImageIO.write(rgb, "jpg", file);
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Saved");
+            alert.setHeaderText(null);
+            alert.setContentText("Report saved as JPG:\n" + file.getAbsolutePath());
+            alert.showAndWait();
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            showError("Failed to save JPG: " + ex.getMessage());
+        }
+    }
+
+    private void saveAsPdf(VBox root, File file) {
+        try {
+            javafx.scene.image.WritableImage fxImage = root.snapshot(
+                new javafx.scene.SnapshotParameters(), null
+            );
+            java.awt.image.BufferedImage buffered = SwingFXUtils.fromFXImage(fxImage, null);
+
+            // Convert to RGB — PDF image embedding does not support alpha
+            java.awt.image.BufferedImage rgb = new java.awt.image.BufferedImage(
+                buffered.getWidth(), buffered.getHeight(),
+                java.awt.image.BufferedImage.TYPE_INT_RGB
+            );
+            java.awt.Graphics2D g = rgb.createGraphics();
+            g.drawImage(buffered, 0, 0, java.awt.Color.WHITE, null);
+            g.dispose();
+
+            java.io.ByteArrayOutputStream imgBytes = new java.io.ByteArrayOutputStream();
+            ImageIO.write(rgb, "jpg", imgBytes);
+            byte[] jpgData = imgBytes.toByteArray();
+
+            writePdfWithImage(file, jpgData, rgb.getWidth(), rgb.getHeight());
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Saved");
+            alert.setHeaderText(null);
+            alert.setContentText("Report saved as PDF:\n" + file.getAbsolutePath());
+            alert.showAndWait();
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            showError("Failed to save PDF: " + ex.getMessage());
+        }
+    }
+
+    private void writePdfWithImage(File out, byte[] jpgData, int imgW, int imgH)
+            throws Exception {
+
+        // Scale to A4 (595 x 842 points) keeping aspect ratio
+        float pageW = 595f, pageH = 842f;
+        float scale = Math.min(pageW / imgW, pageH / imgH);
+        float drawW = imgW * scale;
+        float drawH = imgH * scale;
+        float x     = (pageW - drawW) / 2f;
+        float y     = (pageH - drawH) / 2f;
+
+        java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+        long[] offsets = new long[5];
+        int obj = 0;
+
+        // Object 1 – Catalog
+        offsets[obj++] = buf.size();
+        buf.write("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".getBytes());
+
+        // Object 2 – Pages
+        offsets[obj++] = buf.size();
+        buf.write("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".getBytes());
+
+        // Object 3 – Page
+        offsets[obj++] = buf.size();
+        buf.write(String.format(
+            "3 0 obj\n<< /Type /Page /Parent 2 0 R" +
+            " /MediaBox [0 0 %.2f %.2f]" +
+            " /Contents 4 0 R /Resources << /XObject << /Img 5 0 R >> >> >>\nendobj\n",
+            pageW, pageH).getBytes());
+
+        // Object 4 – Content stream
+        String stream = String.format(
+            "q %.2f 0 0 %.2f %.2f %.2f cm /Img Do Q", drawW, drawH, x, y);
+        offsets[obj++] = buf.size();
+        buf.write(String.format(
+            "4 0 obj\n<< /Length %d >>\nstream\n%s\nendstream\nendobj\n",
+            stream.length(), stream).getBytes());
+
+        // Object 5 – Image XObject
+        offsets[obj++] = buf.size();
+        buf.write(String.format(
+            "5 0 obj\n<< /Type /XObject /Subtype /Image" +
+            " /Width %d /Height %d /ColorSpace /DeviceRGB" +
+            " /BitsPerComponent 8 /Filter /DCTDecode /Length %d >>\nstream\n",
+            imgW, imgH, jpgData.length).getBytes());
+        buf.write(jpgData);
+        buf.write("\nendstream\nendobj\n".getBytes());
+
+        // Cross-reference table
+        long xrefOffset = buf.size();
+        buf.write("xref\n0 6\n".getBytes());
+        buf.write("0000000000 65535 f \n".getBytes());
+        for (long off : offsets) {
+            buf.write(String.format("%010d 00000 n \n", off).getBytes());
+        }
+
+        // Trailer
+        buf.write(String.format(
+            "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n",
+            xrefOffset).getBytes());
+
+        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(out)) {
+            fos.write(buf.toByteArray());
+        }
+    }
+
+    private void showError(String msg) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Error");
+        alert.setHeaderText(null);
+        alert.setContentText(msg);
+        alert.showAndWait();
     }
 }
