@@ -333,78 +333,81 @@ public class ReportUI {
 
     private VBox createCategoryPie(Map<String, model.ReportData> data) {
 
-        PieChart pie = new PieChart();
-        pie.setTitle("Stock by Category");
-        pie.setLegendVisible(false);
-        pie.setLabelsVisible(false);
-        pie.setPrefSize(320, 320);
+    PieChart pie = new PieChart();
+    pie.setTitle("Stock by Category");
+    pie.setLegendVisible(false);
+    pie.setLabelsVisible(false);
+    pie.setPrefSize(320, 320);
 
-        Map<String, String> colorMap = Map.of(
-            "Stationery",    "#3498db",
-            "Furniture",     "#f39c12",
-            "Computer sets", "#e74c3c",
-            "Miscellaneous", "#2ecc71"
+    Map<String, String> colorMap = Map.of(
+        "Stationery",    "#3498db",
+        "Furniture",     "#f39c12",
+        "Computer sets", "#e74c3c",
+        "Miscellaneous", "#2ecc71"
+    );
+
+    int totalStock = 0;
+    VBox legend = new VBox(10);
+    legend.setAlignment(Pos.CENTER_LEFT);
+
+    for (Map.Entry<String, model.ReportData> entry : data.entrySet()) {
+        String name = entry.getKey();
+        model.ReportData d = entry.getValue();
+
+        int stock = d.purchase
+                  - d.issued
+                  + d.returnToInventory
+                  - d.returnToSupplier;
+
+        if (stock <= 0) continue;  // ✅ skip categories with no activity
+
+        totalStock += stock;
+
+        PieChart.Data slice = new PieChart.Data(name, stock);
+        pie.getData().add(slice);
+
+        // ✅ only add to legend if it has data
+        legend.getChildren().add(
+            createLegendItem(
+                colorMap.getOrDefault(name, "#bdc3c7"),
+                name
+            )
         );
-
-        int totalStock = 0;
-
-        for (Map.Entry<String, model.ReportData> entry : data.entrySet()) {
-            String name = entry.getKey();
-            model.ReportData d = entry.getValue();
-
-            // current stock = purchased - issued + returned to inventory - sent to supplier
-            int stock = d.purchase
-                      - d.issued
-                      + d.returnToInventory
-                      - d.returnToSupplier;
-
-            if (stock < 0) stock = 0;   // guard against negatives in pie
-            PieChart.Data slice = new PieChart.Data(name, stock);
-            pie.getData().add(slice);
-            totalStock += stock;
-        }
-
-        pie.getData().forEach(d -> {
-            d.nodeProperty().addListener((obs, oldNode, newNode) -> {
-                if (newNode != null) {
-                    newNode.setStyle(
-                        "-fx-pie-color: " +
-                        colorMap.getOrDefault(d.getName(), "#bdc3c7") + ";"
-                    );
-                }
-            });
-        });
-
-        Label centerLabel = new Label("TOTAL STOCK\n" + totalStock);
-        centerLabel.setAlignment(Pos.CENTER);
-        centerLabel.setStyle(
-            "-fx-font-size: 16px;" +
-            "-fx-font-weight: bold;" +
-            "-fx-text-fill: #34495e;" +
-            "-fx-background-color: white;" +
-            "-fx-background-radius: 50;" +
-            "-fx-padding: 12 18 12 18;" +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0.3, 0, 2);"
-        );
-
-        VBox legend = new VBox(10,
-            createLegendItem("#3498db", "Stationery"),
-            createLegendItem("#f39c12", "Furniture"),
-            createLegendItem("#e74c3c", "Computer sets"),
-            createLegendItem("#2ecc71", "Miscellaneous")
-        );
-        legend.setAlignment(Pos.CENTER_LEFT);
-
-        StackPane donut = new StackPane();
-        javafx.scene.shape.Circle hole = new javafx.scene.shape.Circle(85);
-        hole.setStyle("-fx-fill: #f4f6f9;");
-        donut.getChildren().addAll(pie, hole, centerLabel);
-        donut.setPadding(new Insets(10));
-
-        VBox container = new VBox(15, donut, legend);
-        container.setAlignment(Pos.CENTER);
-        return container;
     }
+
+    pie.getData().forEach(d -> {
+        d.nodeProperty().addListener((obs, oldNode, newNode) -> {
+            if (newNode != null) {
+                newNode.setStyle(
+                    "-fx-pie-color: " +
+                    colorMap.getOrDefault(d.getName(), "#bdc3c7") + ";"
+                );
+            }
+        });
+    });
+
+    Label centerLabel = new Label("TOTAL STOCK\n" + totalStock);
+    centerLabel.setAlignment(Pos.CENTER);
+    centerLabel.setStyle(
+        "-fx-font-size: 16px;" +
+        "-fx-font-weight: bold;" +
+        "-fx-text-fill: #34495e;" +
+        "-fx-background-color: white;" +
+        "-fx-background-radius: 50;" +
+        "-fx-padding: 12 18 12 18;" +
+        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0.3, 0, 2);"
+    );
+
+    StackPane donut = new StackPane();
+    javafx.scene.shape.Circle hole = new javafx.scene.shape.Circle(85);
+    hole.setStyle("-fx-fill: #f4f6f9;");
+    donut.getChildren().addAll(pie, hole, centerLabel);
+    donut.setPadding(new Insets(10));
+
+    VBox container = new VBox(15, donut, legend);
+    container.setAlignment(Pos.CENTER);
+    return container;
+}
 
     private HBox createLegendItem(String color, String text) {
         Label dot = new Label();
