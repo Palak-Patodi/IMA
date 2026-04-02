@@ -30,9 +30,6 @@ import javafx.scene.layout.StackPane;
 import javafx.embed.swing.SwingFXUtils;
 import javax.imageio.ImageIO;
 
-
-
-
 public class ReportUI {
 
     private final Stage stage;
@@ -44,8 +41,6 @@ public class ReportUI {
         "Computer sets",
         "Miscellaneous"
     };
-
-
 
     public ReportUI(String period) {
         stage = new Stage();
@@ -76,7 +71,6 @@ public class ReportUI {
         dashboard = new VBox(20);
         dashboard.setAlignment(Pos.CENTER);
 
-        // ── Save Button ──────────────────────────────────────────────────────
         Button saveBtn = new Button("⬇ Save Report");
         saveBtn.setStyle(
             "-fx-background-color: #2c3e50;" +
@@ -111,11 +105,9 @@ public class ReportUI {
         root.setStyle(
             "-fx-background-color: linear-gradient(to bottom right, #f8f9fc, #eef1f7);"
         );
-
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(30));
 
-        // wire save button after root is created so snapshot captures everything
         saveBtn.setOnAction(e -> handleSave(root));
 
         Map<String, model.ReportData> data = loadReport(period);
@@ -140,7 +132,7 @@ public class ReportUI {
 
         HBox charts = new HBox(60,
             createBarChart(data),
-            createCategoryPie(data)
+            createCategoryPie()
         );
         charts.setAlignment(Pos.CENTER);
         charts.setPadding(new Insets(20, 0, 0, 0));
@@ -166,19 +158,16 @@ public class ReportUI {
                 LocalDate end = start.plusDays(6);
                 return new LocalDate[]{start, end};
             }
-
             case "Monthly": {
                 LocalDate start = today.withDayOfMonth(1);
                 LocalDate end = today.with(java.time.temporal.TemporalAdjusters.lastDayOfMonth());
                 return new LocalDate[]{start, end};
             }
-
             case "Yearly": {
                 LocalDate start = LocalDate.of(today.getYear(), 1, 1);
                 LocalDate end = LocalDate.of(today.getYear(), 12, 31);
                 return new LocalDate[]{start, end};
             }
-
             default:
                 return new LocalDate[]{LocalDate.of(2020, 1, 1), today};
         }
@@ -257,6 +246,33 @@ public class ReportUI {
                 map.put(cat, rd);
             }
 
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return map;
+    }
+
+    // ── Queries actual qty_in_stock from product table, grouped by category ──
+    private Map<String, Integer> loadStockFromDB() {
+        Map<String, Integer> map = new HashMap<>();
+        String sql =
+            "SELECT pt.ptype_name, COALESCE(SUM(p.qty_in_stock), 0) AS total " +
+            "FROM product p " +
+            "JOIN product_type pt ON p.ptype_id = pt.ptype_id " +
+            "GROUP BY pt.ptype_name";
+        try (Connection con = db.DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                String typeName = rs.getString("ptype_name");
+                int qty = rs.getInt("total");
+                for (String cat : categories) {
+                    if (typeName.equalsIgnoreCase(cat)) {
+                        map.put(cat, qty);
+                        break;
+                    }
+                }
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -370,13 +386,16 @@ public class ReportUI {
         return chart;
     }
 
-    private VBox createCategoryPie(Map<String, model.ReportData> data) {
+    // ── Pie chart now reads qty_in_stock directly from DB, period-independent ──
+    private VBox createCategoryPie() {
 
         PieChart pie = new PieChart();
         pie.setTitle("Stock by Category");
         pie.setLegendVisible(false);
         pie.setLabelsVisible(false);
         pie.setPrefSize(320, 320);
+        pie.setMinSize(320, 320);
+        pie.setClip(null);
 
         Map<String, String> colorMap = Map.of(
             "Stationery",    "#3498db",
@@ -385,31 +404,25 @@ public class ReportUI {
             "Miscellaneous", "#2ecc71"
         );
 
+        // Load actual current stock from product.qty_in_stock
+        Map<String, Integer> stockByCategory = loadStockFromDB();
+
         int totalStock = 0;
         VBox legend = new VBox(10);
         legend.setAlignment(Pos.CENTER_LEFT);
 
-        for (Map.Entry<String, model.ReportData> entry : data.entrySet()) {
-            String name = entry.getKey();
-            model.ReportData d = entry.getValue();
-
-            int stock = d.purchase
-                      - d.issued
-                      + d.returnToInventory
-                      - d.returnToSupplier;
-
-            if (stock <= 0) continue;
+        for (String name : categories) {
+            int stock = stockByCategory.getOrDefault(name, 0);
 
             totalStock += stock;
+
+            if (stock <= 0) continue;
 
             PieChart.Data slice = new PieChart.Data(name, stock);
             pie.getData().add(slice);
 
             legend.getChildren().add(
-                createLegendItem(
-                    colorMap.getOrDefault(name, "#bdc3c7"),
-                    name
-                )
+                createLegendItem(colorMap.getOrDefault(name, "#bdc3c7"), name)
             );
         }
 
@@ -443,8 +456,9 @@ public class ReportUI {
         );
 
         StackPane donut = new StackPane();
-        javafx.scene.shape.Circle hole = new javafx.scene.shape.Circle(85);
+        javafx.scene.shape.Circle hole = new javafx.scene.shape.Circle(60);
         hole.setStyle("-fx-fill: #f4f6f9;");
+        hole.setMouseTransparent(true);
         donut.getChildren().addAll(pie, hole, centerLabel);
         donut.setPadding(new Insets(10));
 
@@ -490,15 +504,15 @@ public class ReportUI {
     // ── Save Feature ─────────────────────────────────────────────────────────
 
     private void handleSave(VBox root) {
-    FileChooser chooser = new FileChooser();
-    chooser.setTitle("Save Report As");
-    chooser.setInitialFileName("inventory_report");
-    chooser.getExtensionFilters().add(
-        new FileChooser.ExtensionFilter("JPG Image", "*.jpg")
-    );
-    File file = chooser.showSaveDialog(stage);
-    if (file != null) saveAsJpg(root, file);
-}
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Save Report As");
+        chooser.setInitialFileName("inventory_report");
+        chooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("JPG Image", "*.jpg")
+        );
+        File file = chooser.showSaveDialog(stage);
+        if (file != null) saveAsJpg(root, file);
+    }
 
     private void saveAsJpg(VBox root, File file) {
         try {
@@ -507,7 +521,6 @@ public class ReportUI {
             );
             java.awt.image.BufferedImage buffered = SwingFXUtils.fromFXImage(image, null);
 
-            // Convert to pure RGB — JPG does not support alpha channel
             java.awt.image.BufferedImage rgb = new java.awt.image.BufferedImage(
                 buffered.getWidth(), buffered.getHeight(),
                 java.awt.image.BufferedImage.TYPE_INT_RGB
@@ -537,7 +550,6 @@ public class ReportUI {
             );
             java.awt.image.BufferedImage buffered = SwingFXUtils.fromFXImage(fxImage, null);
 
-            // Convert to RGB — PDF image embedding does not support alpha
             java.awt.image.BufferedImage rgb = new java.awt.image.BufferedImage(
                 buffered.getWidth(), buffered.getHeight(),
                 java.awt.image.BufferedImage.TYPE_INT_RGB
@@ -567,7 +579,6 @@ public class ReportUI {
     private void writePdfWithImage(File out, byte[] jpgData, int imgW, int imgH)
             throws Exception {
 
-        // Scale to A4 (595 x 842 points) keeping aspect ratio
         float pageW = 595f, pageH = 842f;
         float scale = Math.min(pageW / imgW, pageH / imgH);
         float drawW = imgW * scale;
@@ -579,15 +590,12 @@ public class ReportUI {
         long[] offsets = new long[5];
         int obj = 0;
 
-        // Object 1 – Catalog
         offsets[obj++] = buf.size();
         buf.write("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".getBytes());
 
-        // Object 2 – Pages
         offsets[obj++] = buf.size();
         buf.write("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".getBytes());
 
-        // Object 3 – Page
         offsets[obj++] = buf.size();
         buf.write(String.format(
             "3 0 obj\n<< /Type /Page /Parent 2 0 R" +
@@ -595,7 +603,6 @@ public class ReportUI {
             " /Contents 4 0 R /Resources << /XObject << /Img 5 0 R >> >> >>\nendobj\n",
             pageW, pageH).getBytes());
 
-        // Object 4 – Content stream
         String stream = String.format(
             "q %.2f 0 0 %.2f %.2f %.2f cm /Img Do Q", drawW, drawH, x, y);
         offsets[obj++] = buf.size();
@@ -603,7 +610,6 @@ public class ReportUI {
             "4 0 obj\n<< /Length %d >>\nstream\n%s\nendstream\nendobj\n",
             stream.length(), stream).getBytes());
 
-        // Object 5 – Image XObject
         offsets[obj++] = buf.size();
         buf.write(String.format(
             "5 0 obj\n<< /Type /XObject /Subtype /Image" +
@@ -613,7 +619,6 @@ public class ReportUI {
         buf.write(jpgData);
         buf.write("\nendstream\nendobj\n".getBytes());
 
-        // Cross-reference table
         long xrefOffset = buf.size();
         buf.write("xref\n0 6\n".getBytes());
         buf.write("0000000000 65535 f \n".getBytes());
@@ -621,7 +626,6 @@ public class ReportUI {
             buf.write(String.format("%010d 00000 n \n", off).getBytes());
         }
 
-        // Trailer
         buf.write(String.format(
             "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n",
             xrefOffset).getBytes());
