@@ -57,14 +57,12 @@ public class ReportUI {
         Label issued = new Label();
         Label returnInv = new Label();
         Label returnSup = new Label();
-        Label pending = new Label();
 
         HBox cards = new HBox(20,
             createCard("Total Purchase", purchase, "#1abc9c"),
             createCard("Total Issued", issued, "#3498db"),
             createCard("Return to Inventory", returnInv, "#9b59b6"),
-            createCard("Sent to Supplier", returnSup, "#e74c3c"),
-            createCard("Pending Stock", pending, "#e67e22")
+            createCard("Sent to Supplier", returnSup, "#e74c3c")
         );
         cards.setAlignment(Pos.CENTER);
 
@@ -114,21 +112,18 @@ public class ReportUI {
 
         int p = 0, i = 0;
         int rInv = 0, rSup = 0;
-        int pendingTotal = 0;
 
         for (model.ReportData d : data.values()) {
             p    += d.purchase;
             i    += d.issued;
             rInv += d.returnToInventory;
             rSup += d.returnToSupplier;
-            pendingTotal += Math.max(0, d.issued - d.returnToInventory);
         }
 
         purchase.setText(String.valueOf(p));
         issued.setText(String.valueOf(i));
         returnInv.setText(String.valueOf(rInv));
         returnSup.setText(String.valueOf(rSup));
-        pending.setText(String.valueOf(pendingTotal));
 
         HBox charts = new HBox(60,
             createBarChart(data),
@@ -386,7 +381,7 @@ public class ReportUI {
         return chart;
     }
 
-    // ── Pie chart now reads qty_in_stock directly from DB, period-independent ──
+    // ── Pie chart reads qty_in_stock directly from DB, period-independent ──
     private VBox createCategoryPie() {
 
         PieChart pie = new PieChart();
@@ -404,7 +399,6 @@ public class ReportUI {
             "Miscellaneous", "#2ecc71"
         );
 
-        // Load actual current stock from product.qty_in_stock
         Map<String, Integer> stockByCategory = loadStockFromDB();
 
         int totalStock = 0;
